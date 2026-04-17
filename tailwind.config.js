@@ -5,16 +5,7 @@ export default {
     "./resources/**/*.vue",
     "./resources/**/*.js",
   ],
-  module.exports = {
-  content: [
-    "./resources/**/*.vue",
-    "./resources/**/*.js",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
+darkMode: 'class', // <--- THIS IS REQUIRED
   theme: {
     extend: {
       colors: {
@@ -31,9 +22,11 @@ export default {
           900: '#312e81',
         },
       },
+
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
+
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',
@@ -50,9 +43,9 @@ export default {
       },
     },
   },
+
   plugins: [
     require('@tailwindcss/forms'),
     require('@tailwindcss/typography'),
-    //require('@tailwindcss/line-clamp'),
   ],
 }
