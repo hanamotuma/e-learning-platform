@@ -1,47 +1,50 @@
 @import "tailwindcss";
 
-@config "../../tailwind.config.js";
-
 @layer base {
-    body {
-        @apply antialiased text-gray-800;
-    }
+  body {
+    @apply antialiased text-gray-800;
+  }
 }
 
-
 ::-webkit-scrollbar {
-    @apply w-2 h-2;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    @apply bg-gray-100 rounded;
+  background: #f3f4f6;
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
-    @apply bg-gray-400 rounded hover:bg-gray-500;
+  background: #9ca3af;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 @layer components {
-    .btn-primary {
-        @apply bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium;
-    }
-    
-    .btn-secondary {
-        @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200 font-medium;
-    }
-    
-    .card {
-        @apply bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200;
-    }
+  .btn-primary {
+    @apply bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow;
+  }
 }
 
 @layer utilities {
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
 
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .text-gradient {
-       @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600;
-    }
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600;
+  }
 }
