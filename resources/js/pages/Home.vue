@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
 import CourseCard from '@/components/Course/CourseCard.vue';
 
 const props = defineProps({
@@ -72,7 +72,7 @@ const props = defineProps({
     default: () => []
   }
 });
-// Temporary sample data for testing
+
 const sampleCourses = [
   {
     id: 1,
@@ -100,21 +100,17 @@ const sampleCourses = [
   }
 ];
 
-// Use sample data if no courses are provided
 const coursesToUse = computed(() => {
   return props.courses && props.courses.length > 0 ? props.courses : sampleCourses;
 });
-console.log('Courses received:', props.courses);
 
 const search = ref('');
 const activeCategory = ref('All Courses');
 const categories = ['All Courses', 'UI/UX Design', 'Development', 'Data Science', 'Business'];
 
 const filteredCourses = computed(() => {
-    if (!props.courses || !Array.isArray(props.courses)) {
-    return [];
-  }
-  return props.courses.filter(course => {
+  // FIX: Use coursesToUse.value instead of props.courses
+  return coursesToUse.value.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(search.value.toLowerCase());
     const matchesCategory = activeCategory.value === 'All Courses' || course.category === activeCategory.value;
     return matchesSearch && matchesCategory;

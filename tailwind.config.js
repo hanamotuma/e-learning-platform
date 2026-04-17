@@ -5,16 +5,6 @@ export default {
     "./resources/**/*.vue",
     "./resources/**/*.js",
   ],
-  module.exports = {
-  content: [
-    "./resources/**/*.vue",
-    "./resources/**/*.js",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
   theme: {
     extend: {
       colors: {
@@ -53,6 +43,5 @@ export default {
   plugins: [
     require('@tailwindcss/forms'),
     require('@tailwindcss/typography'),
-    //require('@tailwindcss/line-clamp'),
   ],
 }
