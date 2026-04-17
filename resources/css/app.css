@@ -1,4 +1,5 @@
 @import "tailwindcss";
+
 @config "../../tailwind.config.js";
 
 @layer base {
@@ -35,13 +36,12 @@
 }
 
 @layer utilities {
-    /* Custom CSS gradient */
+
     .bg-gradient-primary {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
     
-    /* Fixed Tailwind gradient utility */
     .text-gradient {
-        @apply bg-clip-text text-transparent bg-linear-to-r from-indigo-600 to-purple-600;
+       @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600;
     }
 }
