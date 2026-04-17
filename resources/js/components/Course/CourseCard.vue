@@ -1,7 +1,6 @@
 <template>
   <div class="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-    <div class="h-48 background-gradient-to-r from-indigo-500 to-purple-600 relative">
-      <!-- Placeholder image or course image -->
+    <div class="h-48 bg-gradient-to-r from-indigo-500 to-purple-600 relative">
       <div class="absolute inset-0 flex items-center justify-center text-white text-4xl">
         🎓
       </div>
@@ -42,11 +41,3 @@ defineProps({
   }
 });
 </script>
-
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2; 
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
