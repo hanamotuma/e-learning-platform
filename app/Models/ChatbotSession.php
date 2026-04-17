@@ -3,15 +3,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class SupportTicket extends Model
+class ChatbotSession extends Model
 {
-    protected $table = 'support_ticket';
-
     protected $fillable = [
-        'subject',
         'user_id',
-        'priority',
+        'session_id',
+        'conversation_history',
         'status'
+    ];
+
+    protected $casts = [
+        'conversation_history' => 'array',
     ];
 
     public function user()
@@ -21,6 +23,6 @@ class SupportTicket extends Model
 
     public function messages()
     {
-        return $this->hasMany(SupportMessage::class, 'ticket_id');
+        return $this->hasMany(ChatbotMessage::class);
     }
 }
