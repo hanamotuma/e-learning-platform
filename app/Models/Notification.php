@@ -1,30 +1,29 @@
 <?php
 namespace App\Models;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class Notification extends Model
 {
-    public function up(): void
-    {
-        Schema::create('notifications', function (Blueprint $table) {
-            $table->id('notification_id');
-            $table->foreignId('user_id')->constrained('users', 'user_id')->onDelete('cascade');
-            $table->string('title');
-            $table->text('message');
-            $table->string('type')->default('info');
-            $table->json('data')->nullable();
-            $table->boolean('is_read')->default(false);
-            $table->timestamp('read_at')->nullable();
-            $table->timestamps();
-        });
-    }
+    protected $fillable = [
+        'user_id',
+        'type',
+        'title',
+        'message',
+        'data',
+        'is_read',
+        'read_at',
+        'action_url'
+    ];
 
-    public function down(): void
+    protected $casts = [
+        'data' => 'array',
+        'is_read' => 'boolean',
+        'read_at' => 'datetime',
+    ];
+
+    public function user()
     {
-        Schema::dropIfExists('notifications');
+        return $this->belongsTo(User::class);
     }
-};
+}
