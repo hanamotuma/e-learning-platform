@@ -14,7 +14,7 @@ use Inertia\Response;
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Show the login page.
+     * Show login page
      */
     public function create(Request $request): Response
     {
@@ -25,19 +25,34 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
-     * Handle an incoming authentication request.
+     * LOGIN + ROLE REDIRECT (FIXED)
      */
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = Auth::user();
+
+        // ✅ ROLE BASED REDIRECT
+        if ($user->hasRole('admin')) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if ($user->hasRole('instructor')) {
+            return redirect()->route('instructor.dashboard');
+        }
+
+        if ($user->hasRole('user') || $user->hasRole('student')) {
+            return redirect()->route('user.dashboard');
+        }
+
+        // fallback
+        return redirect()->route('dashboard');
     }
 
     /**
-     * Destroy an authenticated session.
+     * LOGOUT
      */
     public function destroy(Request $request): RedirectResponse
     {
