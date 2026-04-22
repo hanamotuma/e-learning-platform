@@ -28,9 +28,12 @@ Route::middleware(['auth'])->group(function () {
     })->middleware('role:instructor')->name('instructor.dashboard');
 
     // USER / STUDENT DASHBOARD
-    Route::get('/user/dashboard', function () {
-        return Inertia::render('User/Dashboard');
-    })->middleware('role:user')->name('user.dashboard');
+    Route::middleware('auth')->group(function () {
+ 
+    Route::get('/student/dashboard', function () {
+        return Inertia::render('Student/Dashboard');
+    })->middleware('role:student')->name('student.dashboard');
+});
 
     // PROFILE PAGE
     Route::get('/profile', function () {

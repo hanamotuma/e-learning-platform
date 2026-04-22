@@ -34,21 +34,21 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
-        // ✅ ROLE BASED REDIRECT
+        
         if ($user->hasRole('admin')) {
-            return redirect()->route('admin.dashboard');
+            return redirect()->route('/admin/dashboard');
         }
 
         if ($user->hasRole('instructor')) {
-            return redirect()->route('instructor.dashboard');
+            return redirect()->route('/instructor/dashboard');
         }
 
-        if ($user->hasRole('user') || $user->hasRole('student')) {
-            return redirect()->route('user.dashboard');
-        }
+          if (Auth::user('student') || !Auth::user()->role) {
+        return redirect('/student/dashboard');
+    }
 
         // fallback
-        return redirect()->route('dashboard');
+        return redirect('/');
     }
 
     /**
