@@ -14,9 +14,9 @@ class CreateLessonsTable extends Migration
             $table->text('content');
             $table->string('video_url')->nullable();
             $table->integer('duration_minutes')->nullable();
-            $table->integer('order');
             $table->boolean('is_free')->default(false);
             $table->foreignId('section_id')->constrained()->onDelete('cascade');
+            $table->integer('order_position')->default(0);
             $table->timestamps();
         });
     }

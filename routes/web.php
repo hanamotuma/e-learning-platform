@@ -1,58 +1,114 @@
 <?php
 
-use App\Http\Controllers\CourseController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// =========================
-// HOME
-// =========================
-Route::get('/', function () {
-    return Inertia::render('Home');
-})->name('home');
+use App\Http\Controllers\Admin\Auth\AdminAuthController;
+use App\Http\Controllers\Admin\CategoryController;
+use App\Http\Controllers\Admin\CourseController;
+use App\Http\Controllers\Admin\SectionController;
+use App\Http\Controllers\Admin\LessonController;
+
+/*
+|--------------------------------------------------------------------------
+| PUBLIC
+|--------------------------------------------------------------------------
+*/
+Route::get('/', fn () => Inertia::render('Home'))->name('home');
 
 
-// =========================
-// AUTH DASHBOARDS (ROLE BASED)
-// =========================
+/*
+|--------------------------------------------------------------------------
+| USER AUTH (Laravel default auth system)
+|--------------------------------------------------------------------------
+*/
 Route::middleware(['auth'])->group(function () {
 
-    // ADMIN DASHBOARD
-    Route::get('/admin/dashboard', function () {
-        return Inertia::render('Admin/Dashboard');
-    })->middleware('role:admin')->name('admin.dashboard');
+    Route::get('/profile', fn () => Inertia::render('Profile/Edit'))
+        ->name('profile.edit');
 
-    // INSTRUCTOR DASHBOARD
-    Route::get('/instructor/dashboard', function () {
-        return Inertia::render('Instructor/Dashboard');
-    })->middleware('role:instructor')->name('instructor.dashboard');
+    Route::get('/dashboard', fn () => Inertia::render('User/Dashboard'))
+        ->name('dashboard');
 
-    // USER / STUDENT DASHBOARD
-    Route::get('/user/dashboard', function () {
-        return Inertia::render('User/Dashboard');
-    })->middleware('role:user')->name('user.dashboard');
-
-    // PROFILE PAGE
-    Route::get('/profile', function () {
-        return Inertia::render('Profile/Edit');
-    })->name('profile.edit');
 });
 
 
-// =========================
-// COURSE ROUTES
-// =========================
-Route::prefix('courses')->group(function () {
-    Route::get('/', [CourseController::class, 'index'])->name('courses.index');
-    Route::get('/{course}', [CourseController::class, 'show'])->name('courses.show');
+/*
+|--------------------------------------------------------------------------
+| ADMIN AUTH SYSTEM (SEPARATE GUARD)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin')->name('admin.')->group(function () {
 
-    Route::get('/{course}/learn', [CourseController::class, 'learn'])
-        ->middleware('auth')
-        ->name('courses.learn');
+    /*
+    |--------------------------
+    | GUEST ADMIN ROUTES
+    |--------------------------
+    */
+    Route::middleware('guest:admin')->group(function () {
+
+        Route::get('/login', [AdminAuthController::class, 'create'])
+            ->name('login');
+
+        Route::post('/login', [AdminAuthController::class, 'store'])
+            ->name('login.submit');
+
+        Route::get('/register', [AdminAuthController::class, 'registerForm'])
+            ->name('register');
+
+        Route::post('/register', [AdminAuthController::class, 'register'])
+            ->name('register.submit');
+    });
+
+    /*
+    |--------------------------
+    | AUTH ADMIN ROUTES
+    |--------------------------
+    */
+    Route::middleware('auth:admin')->group(function () {
+
+        // 🧭 ADMIN DASHBOARD
+        Route::get('/dashboard', fn () => Inertia::render('Admin/Dashboard'))
+            ->name('dashboard');
+
+        Route::post('/logout', [AdminAuthController::class, 'destroy'])
+            ->name('logout');
+
+        /*
+        |--------------------------------------------------------------------------
+        | LMS ADMIN SYSTEM
+        |--------------------------------------------------------------------------
+        */
+
+        // CATEGORIES
+        Route::resource('categories', CategoryController::class);
+
+        // COURSES
+        Route::resource('courses', CourseController::class);
+
+        // SECTIONS (Course → Section)
+        Route::post('/courses/{course}/sections', [SectionController::class, 'store'])
+            ->name('sections.store');
+
+        Route::put('/sections/{section}', [SectionController::class, 'update'])
+            ->name('sections.update');
+
+        Route::delete('/sections/{section}', [SectionController::class, 'destroy'])
+            ->name('sections.destroy');
+
+        // LESSONS (Section → Lesson)
+        Route::post('/sections/{section}/lessons', [LessonController::class, 'store'])
+            ->name('lessons.store');
+
+        Route::delete('/lessons/{lesson}', [LessonController::class, 'destroy'])
+            ->name('lessons.destroy');
+    });
 });
 
 
-// =========================
-// AUTH ROUTES
-// =========================
+/*
+|--------------------------------------------------------------------------
+| AUTH ROUTES (Laravel Breeze / UI)
+|--------------------------------------------------------------------------
+*/
 require __DIR__.'/auth.php';

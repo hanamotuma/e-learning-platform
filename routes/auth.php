@@ -10,17 +10,27 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| GUEST ROUTES (NOT LOGGED IN)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('guest')->group(function () {
+
+    // ✅ REGISTER (STUDENT ONLY)
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
+    // ✅ ONE LOGIN PAGE (SMART LOGIN)
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
 
-    Route::post('login', [AuthenticatedSessionController::class, 'store']);
+    Route::post('login', [AuthenticatedSessionController::class, 'store'])
+        ->middleware('throttle:5,1'); // 🔐 security
 
+    // PASSWORD RESET
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
@@ -34,7 +44,15 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
+
+/*
+|--------------------------------------------------------------------------
+| AUTHENTICATED ROUTES (LOGGED IN)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth')->group(function () {
+
+    // EMAIL VERIFY
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 
@@ -46,11 +64,13 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:6,1')
         ->name('verification.send');
 
+    // CONFIRM PASSWORD
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
         ->name('password.confirm');
 
     Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
 
+    // ✅ LOGOUT (MULTI-GUARD SAFE)
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 });

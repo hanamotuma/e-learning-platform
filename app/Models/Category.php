@@ -1,37 +1,47 @@
 <?php
+
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use App\Models\Course;
 
 class Category extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'category_id';
-    protected $fillable = ['category_name'];
-protected static function booted()
-{
-    static::creating(function ($category) {
-        if (empty($category->slug)) {
-            $category->slug = \Illuminate\Support\Str::slug($category->name);
-        }
-    });
-}
+    // ✅ Fillable fields
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'icon',
+    ];
 
-    public function up(): void
+    // ✅ Auto slug generation (create + update safe)
+    protected static function booted()
     {
-        Schema::create('categories', function (Blueprint $table) {
-            $table->id('category_id');
-            $table->string('category_name')->unique();
-            $table->timestamps();
+        static::creating(function ($category) {
+            $category->slug = $category->slug ?? Str::slug($category->name);
+        });
+
+        static::updating(function ($category) {
+            if ($category->isDirty('name')) {
+                $category->slug = Str::slug($category->name);
+            }
         });
     }
 
-    public function down(): void
+    // ✅ IMPORTANT: relationships
+    public function courses()
     {
-        Schema::dropIfExists('categories');
+        return $this->hasMany(Course::class, 'category_id', 'id');
     }
-};
+
+    // ✅ Optional: route binding (recommended for SaaS)
+    public function getRouteKeyName()
+    {
+        return 'id'; // change to 'slug' if you want /category/web-dev
+    }
+}
