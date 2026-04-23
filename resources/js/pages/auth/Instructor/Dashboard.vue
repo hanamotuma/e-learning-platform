@@ -1,3 +1,4 @@
+<!-- resources/js/Pages/Instructor/Dashboard.vue -->
 <script setup>
 import { Head, Link } from '@inertiajs/vue3'
 import { ref, computed, onMounted } from 'vue'
@@ -25,13 +26,9 @@ import {
   Star,
   PlusCircle,
   Edit,
-  Trash2,
   Eye,
-  CheckCircle,
-  XCircle,
-  Download,
   Upload,
-  Filter
+  Download
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -85,10 +82,9 @@ const courses = ref([
 ])
 
 const recentEnrollments = ref([
-    { id: 1, student: 'Sarah Johnson', course: 'Modern Web Development with Vue', date: '2026-03-28', amount: 89.99, status: 'completed' },
-    { id: 2, student: 'Michael Chen', course: 'Advanced UI/UX Design Systems', date: '2026-03-27', amount: 74.99, status: 'completed' },
-    { id: 3, student: 'Emily Rodriguez', course: 'Python Programming Masterclass', date: '2026-03-26', amount: 99.99, status: 'pending' },
-    { id: 4, student: 'David Kim', course: 'Modern Web Development with Vue', date: '2026-03-25', amount: 89.99, status: 'completed' },
+    { id: 1, student: 'Sarah Johnson', course: 'Modern Web Development with Vue', date: 'Mar 28, 2026', amount: 89.99, status: 'completed' },
+    { id: 2, student: 'Michael Chen', course: 'Advanced UI/UX Design Systems', date: 'Mar 27, 2026', amount: 74.99, status: 'completed' },
+    { id: 3, student: 'Emily Rodriguez', course: 'Python Programming Masterclass', date: 'Mar 26, 2026', amount: 99.99, status: 'pending' },
 ])
 
 const pendingReviews = ref([
@@ -164,7 +160,14 @@ const userEmail = computed(() => {
     return props.auth?.user?.email || 'instructor@learnhub.com'
 })
 
-// Format currency
+const logout = () => {
+    if (confirm('Are you sure you want to logout?')) {
+        router.post(route('logout'))
+    }
+}
+
+import { router } from '@inertiajs/vue3'
+
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -187,7 +190,7 @@ const formatCurrency = (amount) => {
         </button>
 
         <!-- Mobile Menu Button -->
-        <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center justify-center">
+        <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center justify-center border border-slate-200 dark:border-slate-700">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
@@ -248,10 +251,10 @@ const formatCurrency = (amount) => {
                     <Settings class="w-5 h-5" />
                     <span class="font-medium">Settings</span>
                 </Link>
-                <Link :href="route('logout')" method="post" as="button" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                <button @click="logout" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
                     <LogOut class="w-5 h-5" />
                     <span class="font-medium">Logout</span>
-                </Link>
+                </button>
             </div>
         </aside>
 
@@ -337,12 +340,7 @@ const formatCurrency = (amount) => {
                 <div class="mb-8">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-black dark:text-white">My Courses</h2>
-                        <div class="flex items-center space-x-2">
-                            <button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
-                                <Filter class="w-4 h-4" />
-                            </button>
-                            <Link href="#" class="text-sm text-blue-600 hover:text-blue-700 font-medium">View All →</Link>
-                        </div>
+                        <Link href="#" class="text-sm text-blue-600 hover:text-blue-700 font-medium">View All →</Link>
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div v-for="course in courses" :key="course.id" 
@@ -383,7 +381,7 @@ const formatCurrency = (amount) => {
                                         <button class="p-1.5 text-slate-400 hover:text-blue-600 transition-colors">
                                             <Edit class="w-4 h-4" />
                                         </button>
-                                        <button class="p-1.5 text-slate-400 hover:text-red-600 transition-colors">
+                                        <button class="p-1.5 text-slate-400 hover:text-blue-600 transition-colors">
                                             <Eye class="w-4 h-4" />
                                         </button>
                                     </div>
@@ -393,7 +391,7 @@ const formatCurrency = (amount) => {
                     </div>
                 </div>
 
-                <!-- Recent Enrollments & Upcoming Live Sessions Row -->
+                <!-- Recent Enrollments & Upcoming Live Sessions -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8">
                     
                     <!-- Recent Enrollments -->
@@ -403,7 +401,7 @@ const formatCurrency = (amount) => {
                             <Link href="#" class="text-sm text-blue-600 hover:text-blue-700 font-medium">View All →</Link>
                         </div>
                         <div class="space-y-4">
-                            <div v-for="enrollment in recentEnrollments.slice(0, 3)" :key="enrollment.id" 
+                            <div v-for="enrollment in recentEnrollments" :key="enrollment.id" 
                                 class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                                 <div class="flex items-center space-x-3">
                                     <div class="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
@@ -461,8 +459,8 @@ const formatCurrency = (amount) => {
                     </div>
                 </div>
 
-                <!-- Pending Reviews & Quick Actions Row -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8">
+                <!-- Pending Reviews & Quick Actions -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                     
                     <!-- Pending Reviews -->
                     <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
@@ -526,45 +524,6 @@ const formatCurrency = (amount) => {
                                 <p class="text-sm font-medium dark:text-white">Announcements</p>
                                 <p class="text-xs text-slate-500">Message students</p>
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Earnings Overview Card -->
-                <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
-                    <div class="flex items-center justify-between mb-4">
-                        <h2 class="text-xl font-black dark:text-white">Earnings Overview</h2>
-                        <select class="text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 bg-white dark:bg-slate-800">
-                            <option>Last 30 days</option>
-                            <option>Last 90 days</option>
-                            <option>This year</option>
-                        </select>
-                    </div>
-                    <div class="flex items-center justify-between flex-wrap gap-4">
-                        <div>
-                            <p class="text-3xl font-black dark:text-white">$38,845</p>
-                            <p class="text-sm text-slate-500 mt-1">Total revenue from all courses</p>
-                        </div>
-                        <div class="flex items-center space-x-6">
-                            <div>
-                                <p class="text-sm font-medium dark:text-white">This month</p>
-                                <p class="text-xl font-bold text-emerald-600">$12,450</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium dark:text-white">Last month</p>
-                                <p class="text-xl font-bold dark:text-white">$10,280</p>
-                            </div>
-                            <div>
-                                <p class="text-sm font-medium dark:text-white">Growth</p>
-                                <p class="text-xl font-bold text-emerald-600">+21%</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                        <div class="flex items-center justify-between text-sm">
-                            <span class="text-slate-500">Available for payout</span>
-                            <span class="font-bold dark:text-white">$15,240</span>
-                            <button class="text-blue-600 hover:text-blue-700 font-medium">Request Payout →</button>
                         </div>
                     </div>
                 </div>
