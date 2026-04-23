@@ -22,10 +22,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // Create roles
         $admin = Role::firstOrCreate(['name' => 'admin']);
         $student = Role::firstOrCreate(['name' => 'student']);
+        $instructor = Role::firstOrCreate(['name' => 'instructor']);
 
         // Assign permissions
         // Syncing is better than givePermissionTo in seeders because it prevents duplicates
         $admin->syncPermissions(Permission::all());
         $student->syncPermissions($viewCourses);
+        $instructor->syncPermissions(['view courses', 'create courses', 'edit courses']);
     }
 }
