@@ -4,6 +4,7 @@ use App\Http\Controllers\CourseController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
 
 // =========================
 // HOME
@@ -58,12 +59,22 @@ Route::prefix('courses')->group(function () {
 // =========================
 // NOTIFICATION ROUTES
 // =========================
+
 Route::middleware(['auth'])->group(function () {
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
-    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    // For Inertia page rendering
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    
+    // For JSON API requests
+    Route::get('/notifications/json', [NotificationController::class, 'getNotificationsJson'])->name('notifications.json');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
+});
+
+Route::middleware(['auth', 'role:student'])->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
 

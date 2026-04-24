@@ -15,7 +15,6 @@ import {
   Play,
   LogOut,
   HelpCircle,
-  BarChart3,
   FileText,
   Moon,
   Sun,
@@ -23,7 +22,9 @@ import {
   CheckCircle,
   Video,
   Users,
-  X
+  X,
+  Star,
+  User
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -68,14 +69,13 @@ const stats = computed(() => [
     { label: 'Current Streak', value: '12 days', icon: TrendingUp },
 ])
 
-// Navigation items - NOTIFICATIONS REMOVED FROM HERE
+// Navigation items
 const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'courses', label: 'My Courses', icon: BookOpen },
     { id: 'assignments', label: 'Assignments', icon: FileText },
     { id: 'progress', label: 'Progress', icon: TrendingUp },
     { id: 'discussions', label: 'Discussions', icon: MessageCircle },
-    // Notifications item REMOVED from sidebar
 ]
 
 // Theme functions
@@ -107,12 +107,23 @@ const initTheme = () => {
 const fetchNotifications = async () => {
     loading.value = true
     try {
-        const response = await fetch('/notifications')
+        const response = await fetch('/notifications/json')
         const data = await response.json()
-        notifications.value = data.notifications?.data || []
-        unreadCount.value = data.unread_count || 0
+        
+        if (data.notifications && data.notifications.data) {
+            notifications.value = data.notifications.data
+            unreadCount.value = data.unread_count || 0
+        } else if (Array.isArray(data.notifications)) {
+            notifications.value = data.notifications
+            unreadCount.value = data.unread_count || 0
+        } else {
+            notifications.value = []
+            unreadCount.value = 0
+        }
     } catch (error) {
-        console.error('Error:', error)
+        console.error('Error fetching notifications:', error)
+        notifications.value = []
+        unreadCount.value = 0
     } finally {
         loading.value = false
     }
@@ -124,51 +135,93 @@ const fetchUnreadCount = async () => {
         const data = await response.json()
         unreadCount.value = data.count || 0
     } catch (error) {
-        console.error('Error:', error)
+        console.error('Error fetching unread count:', error)
+        unreadCount.value = 0
     }
 }
 
 const markAsRead = async (id) => {
     try {
-        await fetch(`/notifications/${id}/read`, { method: 'POST' })
-        const notification = notifications.value.find(n => n.id === id)
-        if (notification) {
-            notification.read_at = new Date().toISOString()
+        const response = await fetch(`/notifications/${id}/read`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Content-Type': 'application/json'
+            }
+        })
+        
+        if (response.ok) {
+            notifications.value = notifications.value.filter(n => n.id !== id)
             unreadCount.value = Math.max(0, unreadCount.value - 1)
         }
     } catch (error) {
-        console.error('Error:', error)
+        console.error('Error marking as read:', error)
+        notifications.value = notifications.value.filter(n => n.id !== id)
+        unreadCount.value = Math.max(0, unreadCount.value - 1)
     }
 }
 
 const markAllAsRead = async () => {
     try {
-        await fetch('/notifications/mark-all-read', { method: 'POST' })
-        notifications.value.forEach(n => n.read_at = new Date().toISOString())
-        unreadCount.value = 0
+        const response = await fetch('/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Content-Type': 'application/json'
+            }
+        })
+        
+        if (response.ok) {
+            notifications.value = []
+            unreadCount.value = 0
+        }
     } catch (error) {
-        console.error('Error:', error)
+        console.error('Error marking all as read:', error)
+        notifications.value = []
+        unreadCount.value = 0
+    }
+}
+
+const toggleNotifications = async () => {
+    showNotifications.value = !showNotifications.value
+    if (showNotifications.value) {
+        await fetchNotifications()
     }
 }
 
 const formatDate = (date) => {
-    if (!date) return ''
+    if (!date) return 'Just now'
     const d = new Date(date)
     const now = new Date()
     const diff = Math.floor((now - d) / 1000 / 60)
     
     if (diff < 1) return 'Just now'
-    if (diff < 60) return `${diff} min ago`
-    if (diff < 1440) return `${Math.floor(diff / 60)} hours ago`
-    if (diff < 43200) return `${Math.floor(diff / 1440)} days ago`
+    if (diff < 60) return `${diff} minute${diff > 1 ? 's' : ''} ago`
+    if (diff < 1440) return `${Math.floor(diff / 60)} hour${Math.floor(diff / 60) > 1 ? 's' : ''} ago`
+    if (diff < 43200) return `${Math.floor(diff / 1440)} day${Math.floor(diff / 1440) > 1 ? 's' : ''} ago`
     return d.toLocaleDateString()
 }
 
-const toggleNotifications = () => {
-    showNotifications.value = !showNotifications.value
-    if (showNotifications.value && notifications.value.length === 0) {
-        fetchNotifications()
+const getNotificationIcon = (type) => {
+    const icons = {
+        course_update: BookOpen,
+        assignment: FileText,
+        grade: Award,
+        announcement: MessageCircle,
+        welcome: Star
     }
+    return icons[type] || Bell
+}
+
+const getNotificationColor = (type) => {
+    const colors = {
+        course_update: 'blue',
+        assignment: 'orange',
+        grade: 'emerald',
+        announcement: 'purple',
+        welcome: 'yellow'
+    }
+    return colors[type] || 'slate'
 }
 
 // Close dropdown when clicking outside
@@ -187,7 +240,7 @@ const userName = computed(() => {
 })
 
 const fullName = computed(() => {
-    return props.auth?.user?.name || 'John Carter'
+    return props.auth?.user?.name || 'Hana Motuma'
 })
 
 const userEmail = computed(() => {
@@ -200,11 +253,12 @@ const logout = () => {
     }
 }
 
-const scrollTo = (id) => {
+const scrollTo = (sectionId) => {
+    activeTab.value = sectionId
     isMobileMenuOpen.value = false
-    const el = document.getElementById(id)
-    if (el) {
-        el.scrollIntoView({ behavior: 'smooth' })
+    const element = document.getElementById(sectionId)
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth' })
     }
 }
 
@@ -238,7 +292,7 @@ onUnmounted(() => {
             </svg>
         </button>
 
-        <!-- Sidebar - WITHOUT Notifications -->
+        <!-- Sidebar -->
         <aside :class="[
             'fixed left-0 top-0 h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 z-40',
             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-64'
@@ -266,7 +320,7 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <!-- Navigation - WITHOUT Notifications -->
+            <!-- Navigation -->
             <nav class="flex-1 p-4 space-y-1">
                 <button 
                     v-for="item in navItems" 
@@ -285,14 +339,22 @@ onUnmounted(() => {
 
             <!-- Bottom Actions -->
             <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200 dark:border-slate-800 space-y-1">
+                <!-- Profile Settings Link - ADDED HERE -->
+                <Link :href="route('profile.edit')" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                    <User class="w-5 h-5" />
+                    <span class="font-medium">Profile Settings</span>
+                </Link>
+                
                 <Link href="#" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                     <HelpCircle class="w-5 h-5" />
                     <span class="font-medium">Help Center</span>
                 </Link>
+                
                 <Link href="#" class="flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
                     <Settings class="w-5 h-5" />
                     <span class="font-medium">Settings</span>
                 </Link>
+                
                 <button @click="logout" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
                     <LogOut class="w-5 h-5" />
                     <span class="font-medium">Logout</span>
@@ -315,7 +377,7 @@ onUnmounted(() => {
                     </div>
                     
                     <div class="flex items-center space-x-3">
-                        <!-- Notification Bell - Stays Here -->
+                        <!-- Notification Bell -->
                         <div class="relative notifications-container">
                             <button 
                                 @click="toggleNotifications"
@@ -348,27 +410,62 @@ onUnmounted(() => {
                                 <div class="max-h-96 overflow-y-auto">
                                     <div v-if="loading" class="p-8 text-center">
                                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                                        <p class="text-sm text-slate-500 mt-3">Loading notifications...</p>
                                     </div>
-                                    <div v-else-if="notifications.length === 0" class="p-8 text-center text-slate-500">
-                                        <Bell class="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                        <p>No notifications yet</p>
-                                        <p class="text-xs mt-1">We'll notify you when something arrives</p>
+                                    
+                                    <div v-else-if="notifications.length === 0" class="p-8 text-center">
+                                        <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <Bell class="w-8 h-8 text-slate-400" />
+                                        </div>
+                                        <p class="text-base font-medium dark:text-white">No notifications</p>
+                                        <p class="text-xs text-slate-500 mt-1">You're all caught up!</p>
                                     </div>
+                                    
                                     <div v-else>
                                         <div 
                                             v-for="notification in notifications" 
                                             :key="notification.id"
-                                            :class="[
-                                                'p-4 border-b border-slate-100 dark:border-slate-700 cursor-pointer transition-all',
-                                                !notification.read_at ? 'bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-100/70' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'
-                                            ]"
+                                            class="p-4 border-b border-slate-100 dark:border-slate-700 transition-all cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
                                             @click="markAsRead(notification.id)"
                                         >
-                                            <p class="text-sm font-medium dark:text-white">{{ notification.title }}</p>
-                                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ notification.message }}</p>
-                                            <p class="text-xs text-slate-400 mt-2">{{ formatDate(notification.created_at) }}</p>
+                                            <div class="flex items-start gap-3">
+                                                <div class="flex-shrink-0">
+                                                    <div :class="[
+                                                        'w-10 h-10 rounded-xl flex items-center justify-center',
+                                                        getNotificationColor(notification.type) === 'blue' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                                                        getNotificationColor(notification.type) === 'orange' ? 'bg-orange-100 dark:bg-orange-900/30' :
+                                                        getNotificationColor(notification.type) === 'emerald' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
+                                                        getNotificationColor(notification.type) === 'purple' ? 'bg-purple-100 dark:bg-purple-900/30' :
+                                                        'bg-slate-100 dark:bg-slate-700'
+                                                    ]">
+                                                        <component 
+                                                            :is="getNotificationIcon(notification.type)"
+                                                            :class="[
+                                                                'w-5 h-5',
+                                                                getNotificationColor(notification.type) === 'blue' ? 'text-blue-600' :
+                                                                getNotificationColor(notification.type) === 'orange' ? 'text-orange-600' :
+                                                                getNotificationColor(notification.type) === 'emerald' ? 'text-emerald-600' :
+                                                                getNotificationColor(notification.type) === 'purple' ? 'text-purple-600' :
+                                                                'text-slate-600'
+                                                            ]"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-sm font-semibold dark:text-white">{{ notification.title }}</p>
+                                                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{{ notification.message }}</p>
+                                                    <p class="text-xs text-slate-400 mt-2">{{ formatDate(notification.created_at) }}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div v-if="notifications.length > 0" class="p-3 border-t border-slate-200 dark:border-slate-700 text-center">
+                                    <Link href="/notifications" class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                                        View all notifications
+                                    </Link>
                                 </div>
                             </div>
                         </div>
@@ -390,8 +487,7 @@ onUnmounted(() => {
             <!-- Dashboard Content -->
             <div class="p-4 lg:p-8">
                 
-                <!-- Welcome Banner -->
-                <div class="bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-6 lg:p-8 mb-8 text-white">
+                <div id="dashboard" class="bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-6 lg:p-8 mb-8 text-white">
                     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                         <div>
                             <p class="text-sm opacity-90 mb-1">Welcome to LearnHub</p>
@@ -404,7 +500,6 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <!-- Stats Grid -->
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
                     <div v-for="stat in stats" :key="stat.label" 
                         class="bg-white dark:bg-slate-900 rounded-xl p-4 lg:p-5 border border-slate-200 dark:border-slate-800 hover:shadow-md transition-all">
@@ -420,10 +515,8 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <!-- Resume Learning & Progress Orbs Row -->
                 <div id="courses" class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8">
                     
-                    <!-- Resume Learning -->
                     <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                         <h2 class="text-xl font-black dark:text-white mb-4 flex items-center">
                             <Play class="w-5 h-5 mr-2 text-blue-600" />
@@ -450,7 +543,6 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <!-- Your Progress -->
                     <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                         <h2 class="text-xl font-black dark:text-white mb-4">Your Progress</h2>
                         <div class="space-y-6">
@@ -473,10 +565,8 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <!-- Your Courses & Upcoming Activity Row -->
                 <div id="assignments" class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 mb-8">
                     
-                    <!-- Your Courses -->
                     <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                         <div class="flex items-center justify-between mb-4">
                             <h2 class="text-xl font-black dark:text-white">Your Courses</h2>
@@ -500,7 +590,6 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <!-- Upcoming Activity -->
                     <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                         <div class="flex items-center justify-between mb-4">
                             <h2 class="text-xl font-black dark:text-white">Upcoming Activity</h2>
@@ -524,10 +613,8 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <!-- Discussions & Class Schedule Row -->
                 <div id="discussions" class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
                     
-                    <!-- Discussions -->
                     <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                         <div class="flex items-center justify-between mb-4">
                             <h2 class="text-xl font-black dark:text-white">Discussions</h2>
@@ -545,7 +632,6 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <!-- Class Schedule Card -->
                     <div class="bg-gradient-to-r from-blue-600 to-blue-500 rounded-2xl p-6 text-white">
                         <div class="flex flex-col h-full justify-between">
                             <div>
@@ -567,7 +653,6 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <!-- Recent Activity Card -->
                 <div id="progress" class="mt-8 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-xl font-black dark:text-white">Recent Activity</h2>
@@ -609,7 +694,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -637,7 +721,6 @@ onUnmounted(() => {
     background: #475569;
 }
 
-/* Smooth transitions */
 * {
     transition-property: background-color, border-color, color, fill, stroke, box-shadow;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
