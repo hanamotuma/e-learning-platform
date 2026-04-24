@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Section;
 use App\Models\Lesson;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class LessonController extends Controller
 {
@@ -16,13 +17,11 @@ class LessonController extends Controller
             'content' => 'nullable|string',
         ]);
 
-        // upload video
         $videoPath = null;
         if ($request->hasFile('video')) {
             $videoPath = $request->file('video')->store('lessons', 'public');
         }
 
-        // safe ordering
         $nextOrder = $section->lessons()->max('order_position') + 1;
 
         $section->lessons()->create([
@@ -33,6 +32,13 @@ class LessonController extends Controller
         ]);
 
         return back();
+    }
+
+    public function show(Lesson $lesson)
+    {
+        return Inertia::render('Admin/Lessons/Show', [
+            'lesson' => $lesson->load('resources')
+        ]);
     }
 
     public function destroy(Lesson $lesson)

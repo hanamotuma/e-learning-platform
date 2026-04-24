@@ -8,6 +8,9 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\SectionController;
 use App\Http\Controllers\Admin\LessonController;
+use App\Http\Controllers\Admin\ResourceController;
+use App\Http\Controllers\Admin\ProgressTrackingController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -102,6 +105,22 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::delete('/lessons/{lesson}', [LessonController::class, 'destroy'])
             ->name('lessons.destroy');
+     Route::get('/lessons/{lesson}', [LessonController::class, 'show'])
+        ->name('lessons.show');
+
+        Route::post('/lessons/{lesson}/resources', [ResourceController::class, 'store'])
+            ->name('resources.store');
+
+         Route::delete('/resources/{resource}', [ResourceController::class, 'destroy'])
+         ->name('resources.destroy');
+             Route::post('/lessons/{lesson}/progress', 
+        [ProgressTrackingController::class, 'update']
+    )->name('progress.update');
+
+    Route::get('/courses/{course}/progress', 
+        [ProgressTrackingController::class, 'course.progress']
+    )->name('progress.course');
+
     });
 });
 

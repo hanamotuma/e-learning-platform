@@ -30,7 +30,10 @@ class Lesson extends Model
     {
         return $this->belongsTo(Section::class, 'section_id', 'id');
     }
-
+public function resources()
+{
+    return $this->hasMany(Resource::class);
+}
     public function progress()
     {
         return $this->hasMany('App\Models\ProgressTracking', 'lesson_id', 'lesson_id');

@@ -8,6 +8,8 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
+use App\Models\ProgressTracking; // ✅ FIX HERE
 
 class CourseController extends Controller
 {
@@ -26,8 +28,7 @@ class CourseController extends Controller
                 'price' => $course->price,
                 'is_published' => $course->is_published,
                 'image' => $course->image,
-                'video_url' => $course->video_url, // ✅ FIXED
-                'requirements' => $course->requirements,
+                'video_url' => $course->video_url,
                 'duration_weeks' => $course->duration_weeks,
                 'category' => $course->category?->name,
                 'instructor' => $course->instructor?->name,
@@ -40,7 +41,7 @@ class CourseController extends Controller
     }
 
     /**
-     * CREATE PAGE
+     * CREATE
      */
     public function create()
     {
@@ -50,39 +51,32 @@ class CourseController extends Controller
     }
 
     /**
-     * STORE COURSE
+     * STORE
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'what_you_will_learn' => 'nullable|string',
-            'requirements' => 'nullable|string',
             'price' => 'required|numeric',
             'category_id' => 'required|exists:categories,id',
-            'difficulty_level' => 'nullable|string',
             'duration_weeks' => 'nullable|integer',
             'image' => 'nullable|image',
             'video' => 'nullable|file|mimes:mp4,mov,avi',
         ]);
 
-        // IMAGE
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')
-                ->store('courses/images', 'public');
+            $validated['image'] = $request->file('image')->store('courses/images', 'public');
         }
 
-        // VIDEO
         if ($request->hasFile('video')) {
-            $validated['video_url'] = $request->file('video')
-                ->store('courses/videos', 'public');
+            $validated['video_url'] = $request->file('video')->store('courses/videos', 'public');
         }
 
         Course::create([
             ...$validated,
             'instructor_id' => auth()->id(),
-            'slug' => Str::slug($validated['title']) . '-' . uniqid(), // ✅ safer
+            'slug' => Str::slug($validated['title']) . '-' . uniqid(),
             'is_published' => $request->boolean('is_published'),
         ]);
 
@@ -90,7 +84,7 @@ class CourseController extends Controller
     }
 
     /**
-     * EDIT PAGE
+     * EDIT
      */
     public function edit(Course $course)
     {
@@ -104,54 +98,24 @@ class CourseController extends Controller
     }
 
     /**
-     * UPDATE COURSE
-     */
-    public function update(Request $request, Course $course)
-    {
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'what_you_will_learn' => 'nullable|string',
-            'requirements' => 'nullable|string',
-            'price' => 'required|numeric',
-            'category_id' => 'required|exists:categories,id',
-            'difficulty_level' => 'nullable|string',
-            'duration_weeks' => 'nullable|integer',
-            'image' => 'nullable|image',
-            'video' => 'nullable|file|mimes:mp4,mov,avi',
-        ]);
-
-        if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')
-                ->store('courses/images', 'public');
-        }
-
-        if ($request->hasFile('video')) {
-            $validated['video_url'] = $request->file('video')
-                ->store('courses/videos', 'public');
-        }
-
-        $course->update([
-            ...$validated,
-            'slug' => Str::slug($validated['title']) . '-' . $course->id,
-        ]);
-
-        return redirect()->route('admin.courses.index');
-    }
-
-    /**
-     * SHOW COURSE (FULL STRUCTURE)
+     * SHOW COURSE + PROGRESS (🔥 FIXED HERE)
      */
     public function show(Course $course)
     {
         $course->load([
             'category',
-            'sections' => fn ($q) => $q->orderBy('order_position'),
+            'sections.lessons.resources',
             'sections.lessons' => fn ($q) => $q->orderBy('order_position'),
         ]);
 
+        // 🔥 ADD USER PROGRESS
+        $progress = \App\Models\ProgressTracking::where('user_id', Auth::id())
+            ->where('course_id', $course->id)
+            ->get();
+
         return Inertia::render('Admin/Courses/Show', [
-            'course' => $course
+            'course' => $course,
+            'progressData' => $progress
         ]);
     }
 
@@ -161,7 +125,6 @@ class CourseController extends Controller
     public function destroy(Course $course)
     {
         $course->delete();
-
         return back();
     }
 }
