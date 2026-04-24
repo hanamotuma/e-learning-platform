@@ -8,30 +8,37 @@ use Illuminate\Database\Eloquent\Model;
 class ProgressTracking extends Model
 {
     use HasFactory;
-
-    protected $primaryKey = 'progress_id';
+    protected $table = 'progress_tracking'; // ✅ ADD THIS
 
     protected $fillable = [
-        'enrollment_id',
+        'user_id',
+        'course_id',
         'lesson_id',
-        'is_completed',
+        'status',
+        'progress_percentage',
+        'last_accessed_at',
         'completed_at',
-        'time_spent_seconds',
+        'metadata',
     ];
 
     protected $casts = [
-        'is_completed' => 'boolean',
+        'last_accessed_at' => 'datetime',
         'completed_at' => 'datetime',
-        'time_spent_seconds' => 'integer',
+        'metadata' => 'array',
     ];
 
-    public function enrollment()
+    public function user()
     {
-        return $this->belongsTo(Enrollment::class, 'enrollment_id');
+        return $this->belongsTo(User::class);
+    }
+
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
     }
 
     public function lesson()
     {
-        return $this->belongsTo(Lesson::class, 'lesson_id');
+        return $this->belongsTo(Lesson::class);
     }
 }

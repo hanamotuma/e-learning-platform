@@ -137,7 +137,7 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
                     <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">◌</span>
                     Users
                   </Link>
-                  <Link href="#" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
+                  <Link :href="route('admin.courses.index')" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
                     <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">▣</span>
                     Courses
                   </Link>
@@ -191,7 +191,13 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
                   </div>
 
                   <div class="flex items-center gap-3">
-                    <button class="w-10 h-10 rounded-full bg-white/5 border border-white/10">◈</button>
+                  <Link
+  :href="route('admin.categories.index')"
+  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5"
+>
+  <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">◈</span>
+  Categories
+</Link>
                     <button class="w-10 h-10 rounded-full bg-white/5 border border-white/10">🔔</button>
                     <button class="w-10 h-10 rounded-full bg-white/5 border border-white/10">⚙</button>
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 overflow-hidden"></div>

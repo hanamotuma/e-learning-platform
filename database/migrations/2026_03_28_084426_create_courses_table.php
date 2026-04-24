@@ -17,6 +17,7 @@ class CreateCoursesTable extends Migration
             $table->text('requirements')->nullable();
             $table->string('image')->nullable();
             $table->string('video_url')->nullable();
+
             $table->decimal('price', 10, 2)->default(0);
             $table->foreignId('category_id')->constrained();
             $table->foreignId('instructor_id')->constrained('users');
@@ -30,5 +31,6 @@ class CreateCoursesTable extends Migration
     public function down(): void
     {
         Schema::dropIfExists('courses');
+
     }
 };

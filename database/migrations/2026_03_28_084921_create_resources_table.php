@@ -8,10 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('resource_library', function (Blueprint $table) {
+        Schema::create('resources', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Uploader
+        
+                $table->foreignId('lesson_id')
+          ->constrained()
+          ->cascadeOnDelete();
+
             $table->string('title');
             $table->text('description')->nullable();
             $table->string('file_path');
@@ -20,6 +23,7 @@ return new class extends Migration
             $table->integer('file_size')->nullable(); // in bytes
             $table->string('thumbnail_url')->nullable();
             $table->integer('download_count')->default(0);
+            $table->boolean('is_downloadable')->default(true);
             $table->boolean('is_public')->default(true);
             $table->timestamps();
         });
@@ -27,6 +31,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('resource_library');
+        Schema::dropIfExists('resources');
     }
 };
