@@ -35,7 +35,7 @@ class DatabaseSeeder extends Seeder
         $instructor = User::firstOrCreate(
             ['username' => 'instructor'],
             [
-                'full_name' => 'John Instructor',
+                'full_name' => 'Hana Instructor',
                 'email' => 'instructor@edumind.com',
                 'password' => Hash::make('password'),
                 'is_active' => true,
@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
         );
         $instructor = User::first() ?? User::factory()->create([
     'username' => 'instructor1',
-    'full_name' => 'John Doe',
+    'full_name' => 'Hana Motuma',
     
 ]);
 Course::create([

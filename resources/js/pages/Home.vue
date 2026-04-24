@@ -42,6 +42,7 @@ const contactForm = ref({
   email: '',
   message: ''
 })
+
 // Dynamic Content
 const currentIndex = ref(0);
 
@@ -59,18 +60,9 @@ const heroImages = [
   "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=1200"
 ];
 
-// Loop through content every 4 seconds
-onMounted(() => {
-  setInterval(() => {
-    currentIndex.value = (currentIndex.value + 1) % phrases.length;
-  }, 4000);
-});
-
-
-// --- THEME LOGIC FIXED ---
-const toggleTheme = () => {
-  isDarkMode.value = !isDarkMode.value
-  if (isDarkMode.value) {
+// --- THEME LOGIC (FULLY FIXED) ---
+const applyTheme = (isDark) => {
+  if (isDark) {
     document.documentElement.classList.add('dark')
     localStorage.setItem('theme', 'dark')
   } else {
@@ -79,13 +71,28 @@ const toggleTheme = () => {
   }
 }
 
+const toggleTheme = () => {
+  isDarkMode.value = !isDarkMode.value
+  applyTheme(isDarkMode.value)
+}
+
+const initTheme = () => {
+  const savedTheme = localStorage.getItem('theme')
+  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  
+  const shouldBeDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark)
+  
+  isDarkMode.value = shouldBeDark
+  applyTheme(shouldBeDark)
+}
+
 const updateScroll = () => {
   isScrolled.value = window.scrollY > 20
   const winScroll = document.documentElement.scrollTop
   const height = document.documentElement.scrollHeight - document.documentElement.clientHeight
   scrollProgress.value = (winScroll / height) * 100
 
-  const sections = ['home', 'categories', 'courses', 'features', 'pricing', 'contact']
+  const sections = ['home', 'categories', 'courses', 'features', 'contact']
   for (const section of sections) {
     const el = document.getElementById(section)
     if (el) {
@@ -97,13 +104,15 @@ const updateScroll = () => {
   }
 }
 
+// Lifecycle hooks
 onMounted(() => {
-  // Sync theme on load
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    isDarkMode.value = true
-    document.documentElement.classList.add('dark')
-  }
+  // Initialize theme FIRST
+  initTheme()
+  
+  // Start hero rotation
+  setInterval(() => {
+    currentIndex.value = (currentIndex.value + 1) % phrases.length
+  }, 4000)
 
   window.addEventListener('scroll', updateScroll)
   setTimeout(() => isLoading.value = false, 1200)
@@ -213,6 +222,8 @@ const sendMessage = async () => {
         reply = "Looking for a deal? Our Marketing courses start as low as $45.00!"
     } else if (userMessage.toLowerCase().includes('design')) {
         reply = "Our Design catalog is elite. I highly recommend 'Advanced UI/UX Design Systems' by Marcus Rhoades."
+    } else if (userMessage.toLowerCase().includes('hello') || userMessage.toLowerCase().includes('hi')) {
+        reply = "Hello! Welcome to LearnHub. How can I help you today?"
     }
 
     chatMessages.value.push({ 
@@ -228,13 +239,16 @@ const sendMessage = async () => {
 <template>
   <Head title="LearnHub | Elite Learning Platform" />
 
+  <!-- Progress Bar -->
   <div class="fixed top-0 left-0 h-1 bg-blue-600 z-[120] transition-all duration-150" :style="{ width: scrollProgress + '%' }"></div>
 
+  <!-- Theme Toggle Button -->
   <button @click="toggleTheme" class="fixed bottom-6 left-6 z-[150] w-14 h-14 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl flex items-center justify-center text-xl hover:rotate-12 transition-all border border-slate-100 dark:border-slate-700">
     <span v-if="isDarkMode">☀️</span>
     <span v-else>🌙</span>
   </button>
 
+  <!-- AI Chatbot -->
   <div class="fixed bottom-6 right-6 z-[150] flex flex-col items-end">
     <transition name="list">
       <div v-if="isChatOpen" class="w-80 sm:w-96 h-[550px] bg-white dark:bg-slate-900 shadow-2xl rounded-[2.5rem] border border-slate-100 dark:border-slate-800 mb-4 flex flex-col overflow-hidden">
@@ -276,6 +290,7 @@ const sendMessage = async () => {
     </button>
   </div>
 
+  <!-- Course Modal -->
   <div v-if="selectedCourse" class="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
     <div @click="selectedCourse = null" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
     <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl relative animate-in zoom-in duration-300">
@@ -295,7 +310,10 @@ const sendMessage = async () => {
     </div>
   </div>
 
+  <!-- Main Content -->
   <div class="min-h-screen bg-[#FDFDFF] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden">
+    
+    <!-- Header -->
     <header :class="['fixed top-0 left-0 right-0 z-[100] transition-all duration-500', isScrolled ? 'bg-white/90 dark:bg-slate-950/90 backdrop-blur-md py-3 shadow-sm border-b dark:border-slate-800' : 'bg-transparent py-6 border-transparent']">
       <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         <div class="flex items-center space-x-10">
@@ -327,7 +345,7 @@ const sendMessage = async () => {
 
           <div class="hidden sm:flex items-center space-x-3">
               <template v-if="authUser">
-                <Link :href="route('admin.dashboard')" class="text-sm font-bold px-4 hover:text-blue-600 transition-colors">Dashboard</Link>
+                <Link :href="route('student.dashboard')" class="text-sm font-bold px-4 hover:text-blue-600 transition-colors">Dashboard</Link>
               </template>
               <template v-else>
                 <Link v-if="canLogin" :href="route('login')" class="text-sm font-bold px-4 hover:text-blue-600 transition-colors">Log In</Link>
@@ -342,6 +360,7 @@ const sendMessage = async () => {
       </nav>
     </header>
 
+    <!-- Partners Bar -->
     <div class="bg-white dark:bg-slate-950 py-4 border-b border-slate-50 dark:border-slate-900 mt-24">
         <div class="max-w-7xl mx-auto px-6 overflow-hidden relative">
             <div class="flex space-x-12 whitespace-nowrap animate-marquee items-center opacity-30 dark:invert">
@@ -351,82 +370,84 @@ const sendMessage = async () => {
     </div>
 
     <main>
+      <!-- Hero Section -->
       <section id="home" class="pt-24 pb-32 px-6 relative overflow-hidden min-h-[90vh] flex items-center">
-  <div class="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[120px] -z-10 animate-pulse"></div>
-  <div class="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-400/10 dark:bg-purple-600/5 rounded-full blur-[100px] -z-10"></div>
+        <div class="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[120px] -z-10 animate-pulse"></div>
+        <div class="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-400/10 dark:bg-purple-600/5 rounded-full blur-[100px] -z-10"></div>
 
-  <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-    
-    <div class="z-10 text-center lg:text-left space-y-8">
-      <div class="inline-flex items-center space-x-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-transform hover:scale-105">
-        <span class="flex h-3 w-3 rounded-full bg-blue-600 animate-ping"></span>
-        <span class="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.2em]">Live Learning 2026 Edition</span>
-      </div>
+        <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
+          
+          <div class="z-10 text-center lg:text-left space-y-8">
+            <div class="inline-flex items-center space-x-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-transform hover:scale-105">
+              <span class="flex h-3 w-3 rounded-full bg-blue-600 animate-ping"></span>
+              <span class="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.2em]">Live Learning 2026 Edition</span>
+            </div>
 
-      <div class="h-[180px] md:h-[280px] flex flex-col justify-center">
-        <transition name="hero-fade" mode="out-in">
-          <h1 :key="currentIndex" class="text-7xl md:text-9xl font-black tracking-tighter leading-[0.85] dark:text-white">
-            {{ phrases[currentIndex].main }} <br/>
-            <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400">
-              {{ phrases[currentIndex].highlight }}
-            </span>
-          </h1>
-        </transition>
-      </div>
+            <div class="h-[180px] md:h-[280px] flex flex-col justify-center">
+              <transition name="hero-fade" mode="out-in">
+                <h1 :key="currentIndex" class="text-7xl md:text-9xl font-black tracking-tighter leading-[0.85] dark:text-white">
+                  {{ phrases[currentIndex].main }} <br/>
+                  <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400">
+                    {{ phrases[currentIndex].highlight }}
+                  </span>
+                </h1>
+              </transition>
+            </div>
 
-      <p class="text-xl text-slate-500 dark:text-slate-400 max-w-lg mx-auto lg:mx-0 leading-relaxed font-medium">
-        Don't just learn. Evolve. Access <span class="text-slate-900 dark:text-white font-bold">1,200+ elite certifications</span> taught by global industry pioneers.
-      </p>
+            <p class="text-xl text-slate-500 dark:text-slate-400 max-w-lg mx-auto lg:mx-0 leading-relaxed font-medium">
+              Don't just learn. Evolve. Access <span class="text-slate-900 dark:text-white font-bold">1,200+ elite certifications</span> taught by global industry pioneers.
+            </p>
 
-      <div class="flex flex-col sm:flex-row justify-center lg:justify-start gap-6 items-center">
-        <button @click="scrollTo('courses')" class="group relative px-10 py-5 bg-blue-600 text-white font-black rounded-2xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/30">
-          <span class="relative z-10">Explore All Courses</span>
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 group-hover:opacity-0 transition-opacity"></div>
-        </button>
+            <div class="flex flex-col sm:flex-row justify-center lg:justify-start gap-6 items-center">
+              <button @click="scrollTo('courses')" class="group relative px-10 py-5 bg-blue-600 text-white font-black rounded-2xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/30">
+                <span class="relative z-10">Explore All Courses</span>
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 group-hover:opacity-0 transition-opacity"></div>
+              </button>
 
-        <div class="flex -space-x-4 items-center group cursor-pointer">
-          <img v-for="i in 4" :key="i" :src="`https://picsum.photos/seed/${i+20}/100/100`" class="w-14 h-14 rounded-2xl border-4 border-white dark:border-slate-950 object-cover rotate-3 group-hover:rotate-0 transition-all duration-500" />
-          <div class="pl-8 text-left">
-            <p class="text-sm font-black dark:text-white">Join 50k+ Students</p>
-            <div class="flex text-amber-400 text-xs mt-1">
-              <span v-for="s in 5" :key="s">★</span>
+              <div class="flex -space-x-4 items-center group cursor-pointer">
+                <img v-for="i in 4" :key="i" :src="`https://picsum.photos/seed/${i+20}/100/100`" class="w-14 h-14 rounded-2xl border-4 border-white dark:border-slate-950 object-cover rotate-3 group-hover:rotate-0 transition-all duration-500" />
+                <div class="pl-8 text-left">
+                  <p class="text-sm font-black dark:text-white">Join 50k+ Students</p>
+                  <div class="flex text-amber-400 text-xs mt-1">
+                    <span v-for="s in 5" :key="s">★</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative group">
+            <div class="relative z-10 rounded-[4rem] overflow-hidden aspect-[4/5] border-[12px] border-white dark:border-slate-900 shadow-2xl transition-transform duration-700 group-hover:scale-[1.01]">
+              <transition name="hero-fade" mode="out-in">
+                <img :key="currentIndex" :src="heroImages[currentIndex]" class="w-full h-full object-cover" alt="Learning Platform" />
+              </transition>
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent opacity-60"></div>
+            </div>
+
+            <div class="absolute -top-10 -right-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-slate-700 z-20 animate-float">
+              <div class="flex items-center space-x-4">
+                <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl">🚀</div>
+                <div>
+                  <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none mb-1">Growth</p>
+                  <p class="font-black text-xl dark:text-white">+145% Salary</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="absolute -bottom-10 -left-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-slate-700 z-20 animate-float-delayed">
+              <div class="flex items-center space-x-4">
+                <div class="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl">✔</div>
+                <div>
+                  <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-1">Verified</p>
+                  <p class="font-black text-xl dark:text-white">Expert Tutors</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <div class="relative group">
-      <div class="relative z-10 rounded-[4rem] overflow-hidden aspect-[4/5] border-[12px] border-white dark:border-slate-900 shadow-2xl transition-transform duration-700 group-hover:scale-[1.01]">
-        <transition name="hero-fade" mode="out-in">
-          <img :key="currentIndex" :src="heroImages[currentIndex]" class="w-full h-full object-cover" alt="Learning Platform" />
-        </transition>
-        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent opacity-60"></div>
-      </div>
-
-      <div class="absolute -top-10 -right-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-slate-700 z-20 animate-float">
-        <div class="flex items-center space-x-4">
-          <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl">🚀</div>
-          <div>
-            <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none mb-1">Growth</p>
-            <p class="font-black text-xl dark:text-white">+145% Salary</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="absolute -bottom-10 -left-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-slate-700 z-20 animate-float-delayed">
-        <div class="flex items-center space-x-4">
-          <div class="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl">✔</div>
-          <div>
-            <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-1">Verified</p>
-            <p class="font-black text-xl dark:text-white">Expert Tutors</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
+      <!-- Categories Section -->
       <section id="categories" class="py-20 bg-white dark:bg-slate-950">
         <div class="max-w-7xl mx-auto px-6 text-center">
             <h2 class="text-4xl font-black mb-12 dark:text-white">Explore by <span class="text-blue-600">Category</span></h2>
@@ -442,6 +463,7 @@ const sendMessage = async () => {
         </div>
       </section>
 
+      <!-- Courses Section -->
       <section id="courses" class="py-24 bg-slate-50 dark:bg-slate-900/50 scroll-mt-20">
         <div class="max-w-7xl mx-auto px-6">
           <div class="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-8">
@@ -490,6 +512,7 @@ const sendMessage = async () => {
         </div>
       </section>
 
+      <!-- Features Section -->
       <section id="features" class="py-24 bg-white dark:bg-slate-950 scroll-mt-20 overflow-hidden">
         <div class="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-20 items-center">
           <div class="grid grid-cols-2 gap-6 relative">
@@ -528,6 +551,7 @@ const sendMessage = async () => {
         </div>
       </section>
 
+      <!-- Contact Section -->
       <section id="contact" class="py-24 max-w-7xl mx-auto px-6 scroll-mt-20">
         <div class="bg-slate-900 rounded-[4rem] overflow-hidden flex flex-col lg:flex-row shadow-2xl">
           <div class="lg:w-1/2 p-12 lg:p-20 text-white">
@@ -572,52 +596,53 @@ const sendMessage = async () => {
         </div>
       </section>
     </main>
-<footer class="bg-white dark:bg-slate-950 pt-20 pb-10 border-t border-slate-100 dark:border-slate-900">
-  <div class="max-w-7xl mx-auto px-6">
-    
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-20">
-      
-      <div class="col-span-2 lg:col-span-2 space-y-6">
-        <div class="flex items-center space-x-3">
-          <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-500/20">L</div>
-          <span class="text-3xl font-black dark:text-white tracking-tighter">Learn<span class="text-blue-600">Hub</span></span>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-slate-950 pt-20 pb-10 border-t border-slate-100 dark:border-slate-900">
+      <div class="max-w-7xl mx-auto px-6">
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-20">
+          
+          <div class="col-span-2 lg:col-span-2 space-y-6">
+            <div class="flex items-center space-x-3">
+              <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-500/20">L</div>
+              <span class="text-3xl font-black dark:text-white tracking-tighter">Learn<span class="text-blue-600">Hub</span></span>
+            </div>
+            <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-sm">
+              The elite ecosystem for professional growth. Start learning, stay ahead, and master your future.
+            </p>
+            <div class="flex items-center space-x-2 bg-slate-50 dark:bg-slate-900 p-2 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-inner max-w-xs">
+              <input type="email" placeholder="Email for updates" class="bg-transparent border-none w-full px-3 text-sm focus:ring-0 dark:text-white" />
+              <button class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors">Join</button>
+            </div>
+          </div>
+
+          <div v-for="section in [
+            { title: 'Platform', links: ['Courses', 'Live Mentoring', 'Certification', 'Enterprise'] },
+            { title: 'Company', links: ['About Us', 'Success Stories', 'Join our Team', 'Contact'] },
+            { title: 'Legal', links: ['Accessibility', 'Privacy', 'User Agreement', 'Support'] }
+          ]" :key="section.title" class="col-span-1">
+            <h4 class="font-black text-slate-900 dark:text-white mb-6 text-[11px] uppercase tracking-[0.2em] opacity-80">{{ section.title }}</h4>
+            <ul class="space-y-4 text-[13px] text-slate-600 dark:text-slate-400 font-medium">
+              <li v-for="link in section.links" :key="link">
+                <a href="#" class="hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:pl-1 block">{{ link }}</a>
+              </li>
+            </ul>
+          </div>
         </div>
-        <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-sm">
-          The elite ecosystem for professional growth. Start learning, stay ahead, and master your future.
-        </p>
-        <div class="flex items-center space-x-2 bg-slate-50 dark:bg-slate-900 p-2 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-inner max-w-xs">
-          <input type="email" placeholder="Email for updates" class="bg-transparent border-none w-full px-3 text-sm focus:ring-0 dark:text-white" />
-          <button class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors">Join</button>
+
+        <div class="pt-10 border-t border-slate-100 dark:border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
+          <p class="text-slate-400 text-[11px] font-bold uppercase tracking-widest italic">
+            © 2026 LearnHub Education Global
+          </p>
+
+          <div class="flex items-center space-x-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            <span class="flex items-center space-x-2"><span>🛡️</span> <span>Verified Secure</span></span>
+            <span class="flex items-center space-x-2"><span>🌍</span> <span>Global Access</span></span>
+          </div>
         </div>
       </div>
-
-      <div v-for="section in [
-        { title: 'Platform', links: ['Courses', 'Live Mentoring', 'Certification', 'Enterprise'] },
-        { title: 'Company', links: ['About Us', 'Success Stories', 'Join our Team', 'Contact'] },
-        { title: 'Legal', links: ['Accessibility', 'Privacy', 'User Agreement', 'Support'] }
-      ]" :key="section.title" class="col-span-1">
-        <h4 class="font-black text-slate-900 dark:text-white mb-6 text-[11px] uppercase tracking-[0.2em] opacity-80">{{ section.title }}</h4>
-        <ul class="space-y-4 text-[13px] text-slate-600 dark:text-slate-400 font-medium">
-          <li v-for="link in section.links" :key="link">
-            <a href="#" class="hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:pl-1 block">{{ link }}</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="pt-10 border-t border-slate-100 dark:border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
-      
-      <p class="text-slate-400 text-[11px] font-bold uppercase tracking-widest italic">
-        © 2026 LearnHub Education Global
-      </p>
-
-      <div class="flex items-center space-x-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-        <span class="flex items-center space-x-2"><span>🛡️</span> <span>Verified Secure</span></span>
-        <span class="flex items-center space-x-2"><span>🌍</span> <span>Global Access</span></span>
-      </div>
-    </div>
-  </div>
-</footer>
+    </footer>
   </div>
 </template>
 
@@ -657,27 +682,18 @@ html {
   width: 8px;
 }
 
-.fade-enter-active,
-.fade-leave-active {
+.hero-fade-enter-active,
+.hero-fade-leave-active {
   transition: opacity 0.8s ease, transform 0.8s ease;
 }
 
-.fade-enter-from {
+.hero-fade-enter-from {
   opacity: 0;
   transform: translateY(10px);
 }
 
-.fade-leave-to {
+.hero-fade-leave-to {
   opacity: 0;
   transform: translateY(-10px);
-}
-
-/* Float Animation */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
-}
-.animate-float {
-  animation: float 5s ease-in-out infinite;
 }
 </style>
