@@ -10,7 +10,7 @@ class Lesson extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'lesson_id';
+    protected $primaryKey = 'id'; // 🔥 CHANGE THIS
     
     protected $fillable = [
         'section_id',
@@ -28,9 +28,12 @@ class Lesson extends Model
 
     public function section()
     {
-        return $this->belongsTo(Section::class, 'section_id', 'section_id');
+        return $this->belongsTo(Section::class, 'section_id', 'id');
     }
-
+public function resources()
+{
+    return $this->hasMany(Resource::class);
+}
     public function progress()
     {
         return $this->hasMany('App\Models\ProgressTracking', 'lesson_id', 'lesson_id');

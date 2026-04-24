@@ -15,7 +15,7 @@ class Course extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'course_id';
+    //protected $primaryKey = 'course_id';
     
     protected $fillable = [
         'title',
@@ -54,19 +54,19 @@ class Course extends Model
     // Relationships
     public function instructor()
     {
-        return $this->belongsTo(User::class, 'instructor_id', 'user_id');
+        return $this->belongsTo(User::class, 'instructor_id', 'id');
     }
 
     public function category()
     {
-        return $this->belongsTo('App\Models\Category', 'category_id', 'category_id');
+        return $this->belongsTo('App\Models\Category', 'category_id', 'id');
     }
 
     public function sections()
-    {
-        return $this->hasMany('App\Models\Section', 'course_id', 'course_id')->orderBy('order_position');
-    }
-
+{
+    return $this->hasMany(Section::class, 'course_id', 'id')
+        ->orderBy('order_position');
+}
     public function enrollments()
     {
         return $this->hasMany('App\Models\Enrollment', 'course_id', 'course_id');

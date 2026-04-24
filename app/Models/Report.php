@@ -1,28 +1,30 @@
 <?php
 namespace App\Models;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class Report extends Model
 {
-    public function up(): void
-    {
-        Schema::create('reports', function (Blueprint $table) {
-            $table->id('report_id');
-            $table->string('report_type'); // system, growth, student_progress, content_performance, ticket, chatbot
-            $table->foreignId('generated_by')->constrained('users', 'user_id');
-            $table->json('parameters')->nullable();
-            $table->text('response')->nullable();
-            $table->string('report_data_url')->nullable();
-            $table->timestamps();
-        });
-    }
+    protected $fillable = [
+        'user_id',
+        'report_type',
+        'title',
+        'description',
+        'parameters',
+        'data',
+        'file_path',
+        'status',
+        'generated_at'
+    ];
 
-    public function down(): void
+    protected $casts = [
+        'parameters' => 'array',
+        'data' => 'array',
+        'generated_at' => 'datetime',
+    ];
+
+    public function user()
     {
-        Schema::dropIfExists('reports');
+        return $this->belongsTo(User::class);
     }
-};
+}

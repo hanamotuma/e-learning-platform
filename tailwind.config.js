@@ -5,16 +5,7 @@ export default {
     "./resources/**/*.vue",
     "./resources/**/*.js",
   ],
-  module.exports = {
-  content: [
-    "./resources/**/*.vue",
-    "./resources/**/*.js",
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}
+  
   theme: {
     extend: {
       colors: {
