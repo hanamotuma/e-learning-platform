@@ -82,4 +82,12 @@ public function redirectRoute()
     {
         return $this->hasMany('App\Models\Review');
     }
+    public function notifications(): HasMany
+    {
+        return $this->hasMany('App\Models\Notification');
+    }
+    public function unreadNotifications()
+{
+    return $this->hasMany(Notification::class)->whereNull('read_at');
+}
 }

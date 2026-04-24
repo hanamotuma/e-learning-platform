@@ -3,6 +3,7 @@
 use App\Http\Controllers\CourseController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\NotificationController;
 
 // =========================
 // HOME
@@ -52,6 +53,17 @@ Route::prefix('courses')->group(function () {
     Route::get('/{course}/learn', [CourseController::class, 'learn'])
         ->middleware('auth')
         ->name('courses.learn');
+});
+
+// =========================
+// NOTIFICATION ROUTES
+// =========================
+Route::middleware(['auth'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
 });
 
 

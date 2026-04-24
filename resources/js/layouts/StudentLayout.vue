@@ -17,10 +17,10 @@ import { Link } from '@inertiajs/vue3';
       </div>
 
       <div class="mx-4 mb-8 p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center gap-3">
-        <img src="https://ui-avatars.com/api/?name=John+Carter&background=2563eb&color=fff" class="h-11 w-11 rounded-xl shadow-sm" alt="User">
+        <img src="https://ui-avatars.com/api/?name=Hana+Motuma&background=2563eb&color=fff" class="h-11 w-11 rounded-xl shadow-sm" alt="User">
         <div class="overflow-hidden">
-          <p class="text-sm font-bold text-slate-900 truncate">John Carter</p>
-          <p class="text-[11px] text-slate-500 truncate font-medium">john.carter@email.com</p>
+          <p class="text-sm font-bold text-slate-900 truncate">Hana Motuma</p>
+          <p class="text-[11px] text-slate-500 truncate font-medium">hana.motuma@email.com</p>
         </div>
       </div>
 
