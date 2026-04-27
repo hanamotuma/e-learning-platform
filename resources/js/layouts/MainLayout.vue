@@ -105,7 +105,7 @@
 <script setup>
 import { Link } from '@inertiajs/vue3';
 import Logo from '/resources/js/Components/Logo.vue';const user = {
-    full_name: 'John Doe',
+    full_name: 'Hana Motuma',
     avatar: null
 };
 </script>
