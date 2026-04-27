@@ -19,7 +19,9 @@ export interface NavItem {
 export interface SharedData {
     name: string;
     quote: { message: string; author: string };
-    auth: Auth;
+    auth: {
+        user: User;
+    }; [key: string]: unknown;
     ziggy: {
         location: string;
         url: string;

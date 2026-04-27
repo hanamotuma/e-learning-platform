@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
 
 use App\Http\Controllers\Admin\Auth\AdminAuthController;
 use App\Http\Controllers\Admin\CategoryController;
@@ -24,14 +26,35 @@ use App\Http\Controllers\Admin\ReviewController;
 Route::get('/', fn () => Inertia::render('Home'))->name('home');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/profile', fn () => Inertia::render('Profile/Edit'))->name('profile.edit');
-    Route::get('/dashboard', fn () => Inertia::render('User/Dashboard'))->name('dashboard');
 
-    // 🎓 STUDENT CERTIFICATES (Accessible by logged-in students)
-    Route::get('/certificates/{courseId}', [CertificateController::class, 'show'])
-        ->name('certificates.show');
-    Route::get('/certificates/{certificate}/download', [CertificateController::class, 'download'])
-        ->name('admin.certificates.download');
+    // ADMIN DASHBOARD
+    Route::get('/admin/dashboard', function () {
+        return Inertia::render('Admin/Dashboard');
+    })->middleware('role:admin')->name('admin.dashboard');
+
+    // INSTRUCTOR DASHBOARD
+    Route::get('/instructor/dashboard', function () {
+        return Inertia::render('Instructor/Dashboard');
+    })->middleware('role:instructor')->name('instructor.dashboard');
+
+    // USER / STUDENT DASHBOARD
+    Route::middleware('auth')->group(function () {
+ 
+    Route::get('/student/dashboard', function () {
+        return Inertia::render('Student/Dashboard');
+    })->middleware('role:student')->name('student.dashboard');
+});
+
+    // PROFILE PAGE
+    Route::get('/profile', function () {
+        return Inertia::render('Profile/Edit');
+    })->name('profile.edit');
+    Route::get('/profile', fn () => Inertia::render('Profile/Edit'))
+        ->name('profile.edit');
+
+    Route::get('/dashboard', fn () => Inertia::render('User/Dashboard'))
+        ->name('dashboard');
+
 });
 
 /*
@@ -102,4 +125,31 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
 });
 
+// =========================
+// NOTIFICATION ROUTES
+// =========================
+
+Route::middleware(['auth'])->group(function () {
+    // For Inertia page rendering
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    
+    // For JSON API requests
+    Route::get('/notifications/json', [NotificationController::class, 'getNotificationsJson'])->name('notifications.json');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
+});
+
+Route::middleware(['auth', 'role:student'])->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| AUTH ROUTES (Laravel Breeze / UI)
+|--------------------------------------------------------------------------
+*/
 require __DIR__.'/auth.php';
