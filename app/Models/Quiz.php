@@ -9,26 +9,29 @@ class Quiz extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'quiz_id';
+    // REMOVED: quiz_id (Keep it default 'id' to match the migration)
+    // If you REALLY want 'quiz_id', change the migration to $table->id('quiz_id')
 
     protected $fillable = [
-        'section_id',
+        'course_id',
+                'section_id', // Added
+        'lesson_id',
         'title',
         'description',
         'time_limit_minutes',
         'passing_score',
-        'is_active',
+        'is_published', // Added to match migration
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_published' => 'boolean',
         'time_limit_minutes' => 'integer',
         'passing_score' => 'integer',
     ];
 
     public function section()
     {
-        return $this->belongsTo(Section::class, 'section_id');
+        return $this->belongsTo(Section::class , 'section_id');
     }
 
     public function course()
