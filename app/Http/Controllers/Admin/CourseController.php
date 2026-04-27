@@ -104,6 +104,7 @@ class CourseController extends Controller
     {
         $course->load([
             'category',
+            'sections.quizzes', // <--- IMPORTANT: This is what you were missing!
             'sections.lessons.resources',
             'sections.lessons' => fn ($q) => $q->orderBy('order_position'),
         ]);

@@ -12,12 +12,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('questions', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('quiz_id')->constrained()->cascadeOnDelete();
-            $table->text('question_text');
-            $table->enum('type', ['mcq', 'true_false', 'short_answer'])->default('mcq');
-            $table->integer('marks')->default(1);
-            $table->timestamps();
+            // Use 'id' for standard Laravel conventions
+        $table->id(); 
+        $table->foreignId('quiz_id')->constrained()->cascadeOnDelete();
+        $table->text('question_text');
+        
+        // Match the model's expected field names
+        $table->string('question_type')->default('multiple_choice'); // enum or string
+        $table->json('options')->nullable(); // For MCQ choices
+        $table->json('correct_answer')->nullable(); // Stores the correct key/index
+        $table->integer('points')->default(1);
+        $table->text('explanation')->nullable();
+        
+        $table->timestamps();
         });
     }
 

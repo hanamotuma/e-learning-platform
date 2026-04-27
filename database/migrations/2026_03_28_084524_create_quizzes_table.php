@@ -13,6 +13,7 @@ class CreateQuizzesTable extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
+            $table->foreignId('section_id')->constrained()->onDelete('cascade'); // Added this
             $table->foreignId('lesson_id')->nullable()->constrained()->onDelete('cascade');
             $table->integer('time_limit_minutes')->nullable();
             $table->integer('passing_score')->default(70);

@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AdminAnswer extends Model
 {
+    protected $table = 'admin_answer';
     protected $fillable = [
         'question_id',
         'option_id',
