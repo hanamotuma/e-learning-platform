@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\QuizController;
 use App\Http\Controllers\Admin\QuestionController;
 use App\Http\Controllers\Admin\AttemptReviewController;
 use App\Http\Controllers\Admin\ReviewController;
+use App\Http\Controllers\Admin\QuizAttemptController ;
 
 /*
 |--------------------------------------------------------------------------
@@ -123,6 +124,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::patch('reviews/{review}/toggle', [ReviewController::class, 'toggleApproval'])->name('reviews.toggle');
     Route::post('reviews/{review}/respond', [ReviewController::class, 'respond'])->name('reviews.respond');
     Route::delete('reviews/{review}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
+    // List all attempts
+    Route::get('/attempts', [QuizAttemptController::class, 'index'])->name('attempts.index');
+    
+    // View specific attempt details
+    Route::get('/attempts/{id}', [QuizAttemptController::class, 'show'])->name('attempts.show');
+    
+    // Manual grading route
+    Route::patch('/answers/{answer}/score', [QuizAttemptController::class, 'updateScore'])->name('answers.update-score');
 });
 
 // =========================
