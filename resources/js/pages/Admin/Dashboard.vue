@@ -141,6 +141,20 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
                     <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">▣</span>
                     Courses
                   </Link>
+
+
+
+<Link 
+  :href="route('admin.attempts.index')" 
+  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5"
+>
+  <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-emerald-400">✓</span>
+  Quiz Attempts
+</Link>
+
+
+
+
                   <Link href="#" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
                     <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">◔</span>
                     Analytics

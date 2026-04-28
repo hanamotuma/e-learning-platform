@@ -9,15 +9,16 @@ class Question extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'question_id';
+    // Remove $primaryKey if your migration uses $table->id()
+    // protected $primaryKey = 'question_id'; 
 
     protected $fillable = [
         'quiz_id',
         'question_text',
         'options',
-        'question_type',
+        'question_type', // Must match migration column name
         'correct_answer',
-        'points',
+        'points',        // Must match migration column name
         'explanation',
     ];
 
@@ -29,6 +30,14 @@ class Question extends Model
 
     public function quiz()
     {
-        return $this->belongsTo(Quiz::class, 'quiz_id');
+        return $this->belongsTo(Quiz::class);
     }
+
+public function quizOptions() {
+    return $this->hasMany(QuizOption::class, 'question_id');
+}
+public function adminAnswers()
+{
+    return $this->hasMany(AdminAnswer::class);
+}
 }

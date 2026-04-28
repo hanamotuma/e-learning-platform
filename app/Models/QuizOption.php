@@ -5,6 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class QuizOption extends Model
 {
+    protected $table = 'options'; // Ensure this matches your migration
     protected $fillable = [
         'question_id',
         'option_text',

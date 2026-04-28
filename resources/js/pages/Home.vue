@@ -2,14 +2,22 @@
 import { Head, Link, usePage } from '@inertiajs/vue3'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
-const props = defineProps({
-  canLogin: { type: Boolean, default: true },
-  canRegister: { type: Boolean, default: true },
-})
+// --- INITIALIZATION ---
+const page = usePage();
 
-// Access global shared data (like auth user) from Inertia
-const page = usePage()
-const authUser = computed(() => page.props.auth.user)
+// --- AUTH & ROUTING LOGIC ---
+const user = computed(() => page.props.auth?.user);
+const canLogin = computed(() => page.props.canLogin ?? true);
+const canRegister = computed(() => page.props.canRegister ?? true);
+
+const dashboardRoute = computed(() => {
+    if (!user.value) return route('login');
+    
+    // Switch based on role column in your database
+    return user.value.role === 'admin' 
+        ? route('admin.dashboard') 
+        : route('dashboard'); 
+});
 
 // --- STATE MANAGEMENT ---
 const mobileMenuOpen = ref(false)
@@ -43,9 +51,9 @@ const contactForm = ref({
   message: ''
 })
 
-// Dynamic Content
-const currentIndex = ref(0);
 
+// Dynamic Hero Content
+const currentIndex = ref(0);
 const phrases = [
   { main: "Master Your", highlight: "Future Craft." },
   { main: "Elevate Your", highlight: "Digital Skills." },
@@ -60,13 +68,16 @@ const heroImages = [
   "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=1200"
 ];
 
-// --- THEME LOGIC (FULLY FIXED) ---
-const applyTheme = (isDark) => {
-  if (isDark) {
-    document.documentElement.classList.add('dark')
+// --- CORE FUNCTIONS ---
+
+const toggleTheme = () => {
+  isDarkMode.value = !isDarkMode.value
+  const html = document.documentElement
+  if (isDarkMode.value) {
+    html.classList.add('dark')
     localStorage.setItem('theme', 'dark')
   } else {
-    document.documentElement.classList.remove('dark')
+    html.classList.remove('dark')
     localStorage.setItem('theme', 'light')
   }
 }
@@ -104,27 +115,48 @@ const updateScroll = () => {
   }
 }
 
-// Lifecycle hooks
+const scrollTo = (id) => {
+  mobileMenuOpen.value = false
+  const el = document.getElementById(id)
+  if (el) {
+    const offset = 85 
+    const elementPosition = el.getBoundingClientRect().top + window.pageYOffset
+    const offsetPosition = elementPosition - offset
+
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth'
+    })
+  }
+}
+
+// --- LIFECYCLE HOOKS ---
 onMounted(() => {
-  // Initialize theme FIRST
-  initTheme()
-  
-  // Start hero rotation
-  setInterval(() => {
-    currentIndex.value = (currentIndex.value + 1) % phrases.length
-  }, 4000)
+  // Theme Sync
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    isDarkMode.value = true
+    document.documentElement.classList.add('dark')
+  }
+
+  // Hero Carousel
+  const heroInterval = setInterval(() => {
+    currentIndex.value = (currentIndex.value + 1) % phrases.length;
+  }, 4000);
 
   window.addEventListener('scroll', updateScroll)
   setTimeout(() => isLoading.value = false, 1200)
+
+  // Cleanup interval on unmount implicitly handled if needed, 
+  // but better to store it:
+  onUnmounted(() => {
+    clearInterval(heroInterval)
+    window.removeEventListener('scroll', updateScroll)
+  })
 })
 
-onUnmounted(() => {
-  window.removeEventListener('scroll', updateScroll)
-})
-
-// --- DATA ---
+// --- DATA & COMPUTED ---
 const partners = ['Google', 'Meta', 'Netflix', 'Amazon', 'Microsoft', 'Adobe']
-
 const categories = [
   { name: 'All', icon: '💎' },
   { name: 'Development', icon: '💻' },
@@ -132,13 +164,6 @@ const categories = [
   { name: 'Business', icon: '📈' },
   { name: 'Marketing', icon: '🚀' },
   { name: 'AI & Data', icon: '🧠' }
-]
-
-const socialLinks = [
-  { name: 'Twitter', icon: '𝕏', url: '#', color: 'bg-black' },
-  { name: 'Instagram', icon: '📸', url: '#', color: 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500' },
-  { name: 'LinkedIn', icon: '💼', url: '#', color: 'bg-[#0077b5]' },
-  { name: 'YouTube', icon: '📺', url: '#', color: 'bg-[#ff0000]' }
 ]
 
 const allCourses = [
@@ -161,31 +186,10 @@ const filteredCourses = computed(() => {
   return filtered.filter(c => c.price <= maxPrice.value)
 })
 
-// --- ACTIONS ---
-const scrollTo = (id) => {
-  mobileMenuOpen.value = false
-  const el = document.getElementById(id)
-  if (el) {
-    const offset = 85 
-    const bodyRect = document.body.getBoundingClientRect().top
-    const elementRect = el.getBoundingClientRect().top
-    const elementPosition = elementRect - bodyRect
-    const offsetPosition = elementPosition - offset
-
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: 'smooth'
-    })
-  }
-}
-
+// --- EVENT HANDLERS ---
 const addToCart = (e) => {
   e.stopPropagation()
   cartCount.value++
-}
-
-const triggerSearch = () => {
-  scrollTo('courses')
 }
 
 const handleContact = () => {
@@ -198,44 +202,29 @@ const handleContact = () => {
   }, 1500)
 }
 
-// --- AI CHATBOT LOGIC ---
-const scrollToBottom = async () => {
-  await nextTick()
-  if (chatScrollContainer.value) {
-    chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight
-  }
-}
-
 const sendMessage = async () => {
   if (!chatInput.value.trim()) return
-
-  const userMessage = chatInput.value
-  chatMessages.value.push({ role: 'user', content: userMessage })
+  const userMsg = chatInput.value
+  chatMessages.value.push({ role: 'user', content: userMsg })
   chatInput.value = ''
   isTyping.value = true
-  scrollToBottom()
+  await nextTick()
+  chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight
 
-  setTimeout(() => {
+  setTimeout(async () => {
     let reply = "That's a great choice! We have several experts in that field."
-    
-    if(userMessage.toLowerCase().includes('price') || userMessage.toLowerCase().includes('cheap')) {
+    if(userMsg.toLowerCase().match(/price|cheap|cost/)) {
         reply = "Looking for a deal? Our Marketing courses start as low as $45.00!"
-    } else if (userMessage.toLowerCase().includes('design')) {
-        reply = "Our Design catalog is elite. I highly recommend 'Advanced UI/UX Design Systems' by Marcus Rhoades."
-    } else if (userMessage.toLowerCase().includes('hello') || userMessage.toLowerCase().includes('hi')) {
-        reply = "Hello! Welcome to LearnHub. How can I help you today?"
+    } else if (userMsg.toLowerCase().includes('design')) {
+        reply = "Our Design catalog is elite. I highly recommend 'Advanced UI/UX Design Systems'."
     }
-
-    chatMessages.value.push({ 
-      role: 'assistant', 
-      content: reply
-    })
+    chatMessages.value.push({ role: 'assistant', content: reply })
     isTyping.value = false
-    scrollToBottom()
+    await nextTick()
+    chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight
   }, 1500)
 }
 </script>
-
 <template>
   <Head title="LearnHub | Elite Learning Platform" />
 
@@ -344,13 +333,32 @@ const sendMessage = async () => {
           </button>
 
           <div class="hidden sm:flex items-center space-x-3">
-              <template v-if="authUser">
-                <Link :href="route('student.dashboard')" class="text-sm font-bold px-4 hover:text-blue-600 transition-colors">Dashboard</Link>
-              </template>
-              <template v-else>
-                <Link v-if="canLogin" :href="route('login')" class="text-sm font-bold px-4 hover:text-blue-600 transition-colors">Log In</Link>
-                <Link v-if="canRegister" :href="route('register')" class="px-6 py-2.5 bg-slate-900 dark:bg-blue-600 text-white text-sm font-bold rounded-full hover:bg-blue-600 shadow-xl transition-all hover:-translate-y-1">Join Free</Link>
-              </template>
+<template v-if="user">
+    <Link 
+      :href="dashboardRoute" 
+      class="text-sm font-bold px-4 hover:text-blue-600 transition-colors"
+    >
+      Dashboard
+    </Link>
+  </template>
+
+  <template v-else>
+    <Link 
+      v-if="canLogin" 
+      :href="route('login')" 
+      class="text-sm font-bold px-4 hover:text-blue-600 transition-colors"
+    >
+      Log In
+    </Link>
+    
+    <Link 
+      v-if="canRegister" 
+      :href="route('register')" 
+      class="px-6 py-2.5 bg-slate-900 dark:bg-blue-600 text-white text-sm font-bold rounded-full hover:bg-blue-600 shadow-xl transition-all hover:-translate-y-1"
+    >
+      Join Free
+    </Link>
+  </template>
           </div>
 
           <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden p-2 text-2xl" :class="{'rotate-90': mobileMenuOpen}">
