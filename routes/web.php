@@ -53,7 +53,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', fn () => Inertia::render('Profile/Edit'))
         ->name('profile.edit');
 
-    Route::get('/dashboard', fn () => Inertia::render('User/Dashboard'))
+    Route::get('/dashboard', fn () => Inertia::render('Admin/Dashboard'))
         ->name('dashboard');
 
 });
@@ -134,6 +134,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::patch('/answers/{answer}/score', [QuizAttemptController::class, 'updateScore'])->name('answers.update-score');
 });
 
+
+
 // =========================
 // NOTIFICATION ROUTES
 // =========================
@@ -155,10 +157,34 @@ Route::middleware(['auth', 'role:student'])->group(function () {
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
+/*
+|--------------------------------------------------------------------------
+| ENROLLMENT & PAYMENT ROUTES
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    // Checkout & Enrollment
+    Route::get('/courses/{course}/checkout', [App\Http\Controllers\EnrollmentController::class, 'show'])->name('enroll.show');
+    Route::post('/courses/{course}/enroll', [App\Http\Controllers\EnrollmentController::class, 'enroll'])->name('enroll.process');
+    
+    // My Courses
+    Route::get('/my-courses', [App\Http\Controllers\EnrollmentController::class, 'myCourses'])->name('my-courses');
+    
+    // Progress Tracking
+    Route::get('/courses/{course}/progress', [App\Http\Controllers\EnrollmentController::class, 'trackProgress'])->name('course.progress');
+    Route::post('/courses/{course}/progress', [App\Http\Controllers\EnrollmentController::class, 'updateProgress'])->name('course.progress.update');
+});
+
+// Admin enrollment management
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/enrollments', [App\Http\Controllers\EnrollmentController::class, 'adminIndex'])->name('enrollments.index');
+    Route::post('/enrollments/{enrollment}/confirm-payment', [App\Http\Controllers\EnrollmentController::class, 'confirmPayment'])->name('enrollments.confirm-payment');
+});
+
 
 /*
 |--------------------------------------------------------------------------
-| AUTH ROUTES (Laravel Breeze / UI)
+| AUTH ROUTES
 |--------------------------------------------------------------------------
 */
 require __DIR__.'/auth.php';

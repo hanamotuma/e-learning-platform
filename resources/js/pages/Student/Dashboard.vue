@@ -28,8 +28,14 @@ import {
 } from 'lucide-vue-next'
 
 const props = defineProps({
-    auth: Object
+    auth: Object,
+    enrolledCourses:Array,
+    upcomingActivities: Array,
+    discussions:Array,
+    stats:Object
 })
+
+
 
 // Theme state
 const isDarkMode = ref(false)

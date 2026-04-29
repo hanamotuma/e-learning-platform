@@ -80,9 +80,6 @@ const toggleTheme = () => {
     html.classList.remove('dark')
     localStorage.setItem('theme', 'light')
   }
-}
-
-const toggleTheme = () => {
   isDarkMode.value = !isDarkMode.value
   applyTheme(isDarkMode.value)
 }

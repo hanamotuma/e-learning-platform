@@ -2,107 +2,82 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
-use App\Models\Category;
-use App\Models\Section;
-use App\Models\Enrollment;
-use App\Models\Review;
-use App\Models\Quiz;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Course extends Model
 {
     use HasFactory;
 
-    //protected $primaryKey = 'course_id';
-    
     protected $fillable = [
         'title',
+        'slug',
         'description',
         'what_you_will_learn',
         'requirements',
-        'image',
-        'video_url',
         'price',
         'category_id',
         'instructor_id',
         'difficulty_level',
         'duration_weeks',
+        'image',
+        'video_url',
         'is_published',
-        'published_at',
-        'slug',
-        'updated_at',
     ];
 
     protected $casts = [
-        'is_published' => 'boolean',
-        'published_at' => 'datetime',
         'price' => 'decimal:2',
+        'is_published' => 'boolean',
+        'duration_weeks' => 'integer',
     ];
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($course) {
-            $course->slug = \Str::slug($course->title);
-        });
-
-        
-    }
 
     // Relationships
-    public function instructor()
-    {
-        return $this->belongsTo(User::class, 'instructor_id', 'id');
-    }
-
     public function category()
     {
-        return $this->belongsTo('App\Models\Category', 'category_id', 'id');
+        return $this->belongsTo(Category::class);
+    }
+
+    public function instructor()
+    {
+        return $this->belongsTo(User::class, 'instructor_id');
     }
 
     public function sections()
-{
-    return $this->hasMany(Section::class, 'course_id', 'id')
-        ->orderBy('order_position');
-}
-    public function enrollments()
     {
-        return $this->hasMany('App\Models\Enrollment', 'course_id', 'course_id');
+        return $this->hasMany(Section::class)->orderBy('order_position');
     }
 
-    public function enrolledStudents()
+    public function lessons()
     {
-        return $this->belongsToMany('App\Models\User', 'enrollments', 'course_id', 'user_id', 'course_id', 'user_id')
-                    ->withPivot('status', 'progress_percentage');
+        return $this->hasManyThrough(Lesson::class, Section::class);
     }
 
     public function reviews()
     {
-        return $this->hasMany('App\Models\Review', 'course_id', 'course_id');
+        return $this->hasMany(Review::class);
     }
 
-    public function quizzes()
+    public function enrollments()
     {
-        return $this->hasMany('App\Models\Quiz', 'course_id', 'course_id');
+        return $this->hasMany(Enrollment::class);
     }
 
-    // Accessors
-    public function getAverageRatingAttribute()
+    // Helper methods
+    public function isUserEnrolled($userId)
     {
-        return round($this->reviews()->avg('rating') ?? 0, 1);
+        return $this->enrollments()
+            ->where('user_id', $userId)
+            ->where('status', 'active')
+            ->exists();
     }
 
     public function getTotalStudentsAttribute()
     {
-        return $this->enrollments()->where('status', '!=', 'dropped')->count();
+        return $this->enrollments()->where('status', 'active')->count();
     }
 
-    public function getTotalLessonsAttribute()
+    public function getAverageRatingAttribute()
     {
-        return $this->sections->sum(function($section) {
-            return $section->lessons->count();
-        });
+        return round($this->reviews()->avg('rating') ?? 0, 1);
     }
 }

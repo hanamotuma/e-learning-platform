@@ -2,47 +2,65 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Enrollment extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'id';
-
     protected $fillable = [
         'user_id',
         'course_id',
         'status',
-        'progress_percentage',
+        'amount_paid',
         'enrolled_at',
         'completed_at',
+        'progress_percentage'
     ];
 
     protected $casts = [
-        'progress_percentage' => 'integer',
         'enrolled_at' => 'datetime',
         'completed_at' => 'datetime',
+        'amount_paid' => 'decimal:2',
+        'progress_percentage' => 'integer'
     ];
 
+    // Relationships
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
     }
 
     public function course()
     {
-        return $this->belongsTo(Course::class, 'course_id');
+        return $this->belongsTo(Course::class);
     }
 
-    public function progressTrackings()
+    public function payment()
     {
-        return $this->hasMany(ProgressTracking::class, 'enrollment_id');
+        return $this->hasOne(Payment::class);
     }
 
-    public function certificates()
+    // Scopes
+    public function scopeActive($query)
     {
-        return $this->hasMany(Certificate::class, 'enrollment_id');
+        return $query->where('status', 'active');
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', 'completed');
+    }
+
+    // Helper methods
+    public function isActive()
+    {
+        return $this->status === 'active';
+    }
+
+    public function isCompleted()
+    {
+        return $this->status === 'completed';
     }
 }
