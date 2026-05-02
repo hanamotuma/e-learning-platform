@@ -27,77 +27,44 @@ class AuthenticatedSessionController extends Controller
      * LOGIN (ADMIN + USER TABLE SYSTEM)
      */
     public function store(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+{
+    $credentials = $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required'],
+    ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | 🔴 ADMIN LOGIN (NO ROLE)
-        |--------------------------------------------------------------------------
-        */
-        $admin = Admin::where('email', $credentials['email'])->first();
+    // 🔴 STEP 1: Attempt to find an Admin
+    $admin = Admin::where('email', $credentials['email'])->first();
 
-        if ($admin && Hash::check($credentials['password'], $admin->password)) {
-
-            Auth::guard('admin')->login($admin);
-            $request->session()->regenerate();
-
+    if ($admin && Hash::check($credentials['password'], $admin->password)) {
+        // Manually log into the 'admin' guard
+        Auth::guard('admin')->login($admin, $request->boolean('remember'));
         
-        if ($user->hasRole('admin')) {
-            return redirect()->route('/admin/dashboard');
-        }
-
-        if ($user->hasRole('instructor')) {
-            return redirect()->route('/instructor/dashboard');
-        }
-
-          if (Auth::user('student') || !Auth::user()->role) {
-        return redirect('/student/dashboard');
+        $request->session()->regenerate();
+        return redirect()->route('admin.dashboard');
     }
 
-        // fallback
-        return redirect('/');
-            return redirect()->route('admin.dashboard');
-        }
+    // 🔵 STEP 2: If no admin found, attempt to find a User
+    $user = User::where('email', $credentials['email'])->first();
 
-        /*
-        |--------------------------------------------------------------------------
-        | 🔵 USER LOGIN (WITH ROLE)
-        |--------------------------------------------------------------------------
-        */
-        $user = User::where('email', $credentials['email'])->first();
+    if ($user && Hash::check($credentials['password'], $user->password)) {
+        // Manually log into the default 'web' guard
+        Auth::guard('web')->login($user, $request->boolean('remember'));
+        
+        $request->session()->regenerate();
 
-        if ($user && Hash::check($credentials['password'], $user->password)) {
-
-            Auth::guard('web')->login($user);
-            $request->session()->regenerate();
-
-            // 🎓 ROLE BASED REDIRECT (ONLY USERS)
-            if ($user->role === 'student') {
-                return redirect()->route('user.dashboard');
-            }
-
-            if ($user->role === 'instructor') {
-                return redirect()->route('instructor.dashboard');
-            }
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | ❌ FAILED LOGIN
-        |--------------------------------------------------------------------------
-        */
-        return back()->withErrors([
-            'email' => 'These credentials do not match our records.',
-        ]);
+        // Redirect based on the 'role' column inside the User table
+        return match ($user->role) {
+            'instructor' => redirect()->route('instructor.dashboard'),
+            default      => redirect()->route('dashboard'), // Students
+        };
     }
 
-    /**
-     * LOGOUT
-     */
+    // ❌ STEP 3: If neither match, return error
+    return back()->withErrors([
+        'email' => 'The provided credentials do not match our records.',
+    ]);
+}
     public function destroy(Request $request)
     {
         Auth::guard('admin')->logout();

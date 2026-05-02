@@ -82,10 +82,6 @@ const toggleTheme = () => {
   }
 }
 
-const toggleTheme = () => {
-  isDarkMode.value = !isDarkMode.value
-  applyTheme(isDarkMode.value)
-}
 
 const initTheme = () => {
   const savedTheme = localStorage.getItem('theme')
