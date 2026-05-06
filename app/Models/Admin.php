@@ -24,7 +24,8 @@ class Admin extends Authenticatable
         'password',
         'role',
         'status',
-        'last_login_at',
+
+        'last_seen_at' => 'datetime',
     ];
 
     /**
@@ -83,4 +84,16 @@ class Admin extends Authenticatable
             'last_login_at' => now()
         ]);
     }
+    // app/Models/Admin.php
+
+// Update in app/Models/Admin.php
+public function hasRole($role)
+{
+    // If they are a super_admin, they have permission for everything
+    if ($this->role === 'super_admin') {
+        return true;
+    }
+
+    return $this->role === $role;
+}
 }

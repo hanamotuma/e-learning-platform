@@ -15,6 +15,7 @@ return new class extends Migration
            $table->id();
             $table->foreignId('ticket_id')->constrained('support_ticket')->onDelete('cascade');
             $table->foreignId('user_id')->constrained();
+            
             $table->text('message');
             $table->json('attachments')->nullable();
             $table->timestamps();

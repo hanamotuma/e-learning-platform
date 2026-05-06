@@ -50,6 +50,10 @@ class HandleInertiaRequests extends Middleware
                 'role' => ($user instanceof \App\Models\Admin) ? 'admin' : 'student',
             ] : null,
         ],
+        'flash' => [
+            'success' => fn () => $request->session()->get('success'),
+            'error' => fn () => $request->session()->get('error'),
+        ],
 
         'canLogin' => \Illuminate\Support\Facades\Route::has('login'),
 'canRegister' => \Illuminate\Support\Facades\Route::has('register'),

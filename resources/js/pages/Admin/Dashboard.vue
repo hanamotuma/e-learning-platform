@@ -1,6 +1,7 @@
 <!-- resources/js/Pages/Admin/Dashboard.vue -->
 <script setup lang="ts">
 import { Link, router, usePage } from '@inertiajs/vue3'
+import { ref, onMounted } from 'vue';
 import { computed } from 'vue'
 
 type StatCard = {
@@ -10,7 +11,30 @@ type StatCard = {
   isPositive: boolean
   accent: string
 }
+// Optional: adds a smooth entrance animation when the component mounts
+const unreadCount = computed(() => {
+    // If props.notifications.data doesn't exist yet, return 0
+    if (!props.notifications?.data) return 0;
+    
+    // Check for both boolean false or integer 0
+    return props.notifications.data.filter(n => n.is_read == false || n.is_read == 0).length;
+});
+const showBars = ref(false);
+onMounted(() => {
+  setTimeout(() => {
+    showBars.value = true;
+  }, 100);
+});
+onMounted(() => {
+    console.log('Listening for Admin ID:', page.props.auth.user.id);
 
+    window.Echo.private(`App.Models.User.${page.props.auth.user.id}`)
+        .listen('NotificationSent', (e) => {
+            console.log('New notification received!', e.notification);
+            // This is what makes the count change!
+            props.notifications.data.unshift(e.notification);
+        });
+});
 const props = defineProps<{
   stats: {
     total_sales: number
@@ -20,38 +44,46 @@ const props = defineProps<{
     total_courses: number
     course_increase: number
     total_revenue?: number
+    salesData: Array // This will be your array of numbers from the controller
   }
   users: {
     data: Array<{
       id: number
-      full_name?: string
-      username?: string
-      email?: string
-      status?: string
-      created_at_human?: string
-      last_login?: string
-      course_enrollment?: string
+      full_name: string // Required for display
+      email: string
+      status: string
+      last_login: string
+      course_enrollment: string
       avatar?: string
     }>
     current_page?: number
     last_page?: number
   }
   revenue_chart: Record<string, number>
-  platform_overview?: {
-    thoughts?: number
-    students?: number
-    total_enrollment?: number
-    new_enrollments?: number
-    total_courses?: number
-    completion_rate?: number
-    engagement_rate?: number
-    average_grade?: number
+  platform_overview: {
+    students: number
+    total_enrollment: number
+    new_enrollments: number
+    total_courses: number
+    online_users: number // Added to match your controller fix
+  
   }
-  course_performance?: {
-    completion?: number
-    engagement?: number
-    average_grade?: number
-  }
+  course_performance: {
+    completion: number
+    engagement: number
+    average_grade: number
+  },
+  // Add the notifications prop here
+    notifications: {
+        data: Array<{
+            id: number;
+            title: string;
+            message: string;
+            type: string;
+            is_read: boolean;
+            created_at: string;
+        }>
+    }
 }>()
 
 const page = usePage()
@@ -63,13 +95,14 @@ const logout = () => {
   }
 }
 
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('en-US', {
+const formatCurrency = (value) => {
+  return new Intl.NumberFormat('en-ET', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'ETB',
+    minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value ?? 0)
-
+  }).format(value);
+};
 const mainStats = computed<StatCard[]>(() => [
   {
     label: 'Total Sales',
@@ -85,6 +118,7 @@ const mainStats = computed<StatCard[]>(() => [
     isPositive: (props.stats?.student_increase ?? 0) >= 0,
     accent: 'from-purple-400 to-fuchsia-500',
   },
+
   {
     label: 'Total Courses',
     value: String(props.stats?.total_courses ?? 0),
@@ -93,6 +127,13 @@ const mainStats = computed<StatCard[]>(() => [
     accent: 'from-amber-400 to-orange-500',
   },
 ])
+// Fix 1: Bulletproof maxSales
+const maxSales = computed(() => {
+  const data = props.stats?.salesData || [];
+  // Never return 0, return at least 1 to avoid math errors (Division by Zero)
+  return data.length > 0 ? Math.max(...data) : 1;
+});
+
 
 const userName = computed(() => {
   const name = authUser.value?.full_name || authUser.value?.name || 'Admin'
@@ -133,10 +174,20 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
                     <span class="w-8 h-8 rounded-xl bg-violet-500/30 flex items-center justify-center">⌂</span>
                     Dashboard
                   </Link>
-                  <Link href="#" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
-                    <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">◌</span>
-                    Users
-                  </Link>
+                  <Link 
+    :href="route('admin.users.index')" 
+    :class="[
+        route().current('admin.users.index') 
+            ? 'bg-violet-600/25 border-violet-500/30 text-white' 
+            : 'text-slate-300 hover:bg-white/5',
+        'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200'
+    ]"
+>
+    <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-lg">
+        👤
+    </span>
+    Users
+</Link>
                   <Link :href="route('admin.courses.index')" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
                     <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">▣</span>
                     Courses
@@ -155,14 +206,30 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
 
 
 
-                  <Link href="#" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
+                  <Link :href="route('admin.reports.index')" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
                     <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">◔</span>
                     Analytics
                   </Link>
-                  <Link href="#" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
-                    <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">⚙</span>
-                    Settings
-                  </Link>
+                  <Link :href="route('admin.tickets.index')" 
+          :class="[route().current('admin.tickets.*') ? 'bg-violet-600 text-white' : 'text-slate-400 hover:bg-white/5', 'flex items-center gap-3 px-4 py-3 rounded-2xl transition']">
+        <span class="w-5 h-5 text-center">🎫</span>
+        <span>Support Tickets</span>
+    </Link>
+                  <Link 
+  :href="route('admin.settings.index')" 
+  class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200"
+  :class="route().current('admin.settings.index') 
+    ? 'bg-white/10 text-white shadow-lg' 
+    : 'text-slate-300 hover:bg-white/5 hover:text-white'"
+>
+  <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  </span>
+  Settings
+</Link>
                 </nav>
 
                 <div class="mt-auto p-4 border-t border-white/10 space-y-2">
@@ -170,11 +237,15 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
                     <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">◫</span>
                     Profile
                   </Link>
-                  <Link href="#" class="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
-                    <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">◉</span>
-                    Notifications
-                  </Link>
-
+                  <Link :href="route('admin.notifications.index')" class="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5">
+    <div class="flex items-center gap-3">
+        <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">🔔</span>
+        Notifications
+    </div>
+    <span v-if="$page.props.auth.unread_notifications_count > 0" class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+        {{ $page.props.auth.unread_notifications_count }}
+    </span>
+</Link>
                   <div class="flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3 mt-4">
                     <div class="flex items-center gap-3">
                       <div class="w-10 h-10 rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-500"></div>
@@ -212,8 +283,16 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
   <span class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">◈</span>
   Categories
 </Link>
-                    <button class="w-10 h-10 rounded-full bg-white/5 border border-white/10">🔔</button>
-                    <button class="w-10 h-10 rounded-full bg-white/5 border border-white/10">⚙</button>
+<div class="relative">
+    <button class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+        🔔
+    </button>
+    
+    <span v-if="unreadCount > 0" 
+          class="absolute -top-1 -right-1 h-5 w-5 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-slate-900">
+        {{ unreadCount }}
+    </span>
+</div>                    <button class="w-10 h-10 rounded-full bg-white/5 border border-white/10">⚙</button>
                     <div class="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 overflow-hidden"></div>
                   </div>
                 </header>
@@ -301,14 +380,25 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
                       </table>
                     </div>
 
-                    <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
-                      <div>Page {{ users?.current_page ?? 1 }} of {{ users?.last_page ?? 1 }}</div>
-                      <div class="flex items-center gap-2">
-                        <button class="rounded-lg bg-white/5 px-3 py-1">‹</button>
-                        <button class="rounded-lg bg-white/5 px-3 py-1">1</button>
-                        <button class="rounded-lg bg-white/5 px-3 py-1">›</button>
-                      </div>
-                    </div>
+                    <!-- ... table ends ... -->
+<div class="mt-3 flex items-center justify-between text-xs text-slate-400">
+  <div>Page {{ users.current_page }} of {{ users.last_page }}</div>
+  
+  <!-- This is where the code goes -->
+  <div class="flex items-center gap-2">
+    <Link 
+      v-for="link in users.links" 
+      :key="link.label"
+      :href="link.url || '#'"
+      v-html="link.label"
+      class="rounded-lg px-3 py-1 transition-colors"
+      :class="[
+          link.active ? 'bg-violet-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10',
+          !link.url ? 'opacity-50 cursor-not-allowed' : ''
+      ]"
+    />
+  </div>
+</div>
                   </div>
 
                   <div class="col-span-12 xl:col-span-4 space-y-4">
@@ -317,24 +407,49 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
                         <h3 class="font-semibold">Sales & Enrollment</h3>
                         <span class="text-xs text-slate-400">30d</span>
                       </div>
-                      <div class="h-44 rounded-xl bg-gradient-to-b from-violet-500/20 to-transparent border border-white/10 flex items-end p-3">
-                        <div class="w-full h-full rounded-lg bg-[linear-gradient(180deg,rgba(139,92,246,0.2),rgba(59,130,246,0.1))] flex items-end p-2">
-                          <div class="w-full h-[72%] rounded-xl bg-[linear-gradient(180deg,#a855f7,#3b82f6)] opacity-90"></div>
-                        </div>
-                      </div>
+                      <div class="h-44 rounded-xl bg-gradient-to-b from-violet-500/20 to-transparent border border-white/10 flex items-end p-3 gap-2">
+  <!-- Dynamic Bars Loop -->
+  <div 
+    v-for="(value, month) in revenue_chart" 
+    :key="month" 
+    class="group relative flex-1 h-full flex items-end"
+  >
+    <!-- Tooltip -->
+    <div class="absolute -top-8 left-1/2 -translate-x-1/2 scale-0 group-hover:scale-100 bg-white text-black text-[10px] px-2 py-1 rounded whitespace-nowrap z-10 shadow-xl transition-transform">
+      {{ month }}: {{ formatCurrency(value) }}
+    </div>
+    
+    <!-- Bar -->
+    <div 
+      class="w-full rounded-t-md bg-gradient-to-t from-violet-600 to-cyan-400 transition-all duration-700 ease-out" 
+      :style="{ 
+        height: value > 0 
+          ? `${(value / Math.max(...Object.values(revenue_chart), 1)) * 100}%` 
+          : '4px' 
+      }"
+    ></div>
+    
+    <!-- Month Label -->
+    <div class="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] text-slate-500 uppercase font-medium">
+      {{ month }}
+    </div>
+  </div>
+</div>
                     </div>
 
                     <div class="rounded-2xl border border-white/10 bg-[#15193f]/80 p-4">
                       <h3 class="font-semibold mb-3">Online Status</h3>
                       <div class="flex items-center justify-between">
-                        <div>
-                          <div class="text-3xl font-bold">635</div>
-                          <div class="text-xs text-slate-400">Online now</div>
-                        </div>
-                        <div>
-                          <div class="text-3xl font-bold text-right">635</div>
-                          <div class="text-xs text-slate-400 text-right">Online now</div>
-                        </div>
+                        <!-- Online Status Card -->
+<div>
+  <p class="text-3xl font-bold">{{ platform_overview.online_users }}</p>
+  <p class="text-slate-400">Online Now</p>
+</div>
+
+<!-- Growth Badge -->
+<span :class="stats.student_growth >= 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'">
+  {{ stats.student_growth }}%
+</span>
                       </div>
                       <div class="mt-4 grid grid-cols-3 gap-2 text-xs">
                         <button class="rounded-lg bg-white/5 py-2">Mail</button>
@@ -343,115 +458,186 @@ const progressWidth = (value?: number) => `${Math.min(Math.max(Number(value ?? 0
                       </div>
                     </div>
 
-                    <div class="rounded-2xl border border-white/10 bg-[#15193f]/80 p-4">
-                      <div class="flex items-center justify-between mb-2">
-                        <h3 class="font-semibold">Sales & Enrollment</h3>
-                        <span class="text-xs text-slate-400">Last 30 days</span>
-                      </div>
-                      <div class="h-32 rounded-xl bg-white/5 border border-white/10 p-3 flex items-end gap-2">
-                        <div v-for="n in 12" :key="n" class="flex-1 rounded-t-md bg-gradient-to-t from-purple-600 to-cyan-400" :style="{ height: `${20 + (n % 6) * 12}%` }"></div>
-                      </div>
-                    </div>
+                    <div class="flex items-center justify-between mb-2">
+      <h3 class="font-semibold text-white">Sales & Enrollment</h3>
+      <span class="text-xs text-slate-400">Last 30 days</span>
+    </div>
+    
+    <div class="h-32 rounded-xl bg-white/5 border border-white/10 p-3 flex items-end gap-1">
+      <div 
+  v-for="(count, index) in (props.stats?.salesData || [])" 
+  :key="index"
+  class="flex-1 rounded-t-sm bg-gradient-to-t from-purple-600 to-cyan-400 transition-all duration-500"
+  :style="{ height: `${(count / maxSales) * 100}%` }"
+></div>
+      <div 
+    v-for="(count, index) in (props.stats?.salesData || [])" 
+    :key="index"
+    class="flex-1 rounded-t-sm bg-gradient-to-t from-purple-600 to-cyan-400 transition-all duration-500"
+    :style="{ height: `${(count / maxSales) * 100}%` }"
+    :title="`${count} Enrollments`"
+  ></div>
 
-                    <div class="rounded-2xl border border-white/10 bg-[#15193f]/80 p-4">
-                      <div class="flex items-center justify-between mb-3">
-                        <h3 class="font-semibold">Revenue & Sales</h3>
-                        <span class="text-xs text-slate-400">Side view</span>
-                      </div>
-                      <div class="flex items-center gap-4">
-                        <div class="relative h-40 w-40 rounded-full border-[14px] border-violet-500/30 border-t-cyan-400 border-r-fuchsia-500 border-b-purple-500 border-l-blue-500 flex items-center justify-center">
-                          <div class="text-center">
-                            <div class="text-xs text-slate-400">Sales</div>
-                            <div class="font-bold text-lg">$160,271</div>
-                          </div>
-                        </div>
-                        <div class="flex-1 space-y-3 text-sm">
-                          <div class="flex justify-between"><span class="text-slate-400">Web Dev</span><span>$7.2k</span></div>
-                          <div class="flex justify-between"><span class="text-slate-400">Associate</span><span>$5.4k</span></div>
-                          <div class="flex justify-between"><span class="text-slate-400">Activity</span><span>$5.2k</span></div>
-                        </div>
-                      </div>
-                    </div>
+  <div v-if="!(props.stats?.salesData?.length)" class="w-full text-center text-slate-500 text-xs mb-10">
+    No enrollment data available
+  </div>
+    </div>
+
+                    <div class="flex items-center justify-between mb-3">
+    <h3 class="font-semibold text-slate-200">Revenue & Sales</h3>
+    <span class="text-xs text-slate-400">Side view</span>
+  </div>
+
+  <div class="flex items-center gap-4">
+    <!-- Center Donut Chart -->
+    <div class="relative h-40 w-40 rounded-full border-[14px] border-violet-500/30 border-t-cyan-400 border-r-fuchsia-500 border-b-purple-500 border-l-blue-500 flex items-center justify-center">
+      <div class="text-center px-1">
+        <div class="text-[10px] text-slate-400 uppercase">Total Revenue</div>
+        <div class="font-bold text-base text-white break-all">
+          {{ formatCurrency(stats?.total_sales ?? 0) }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynamic List: Shows the last 3 months of revenue -->
+    <div class="flex-1 space-y-3 text-sm">
+      <div 
+        v-for="(value, month) in Object.fromEntries(Object.entries(revenue_chart || {}).slice(-3))" 
+        :key="month" 
+        class="flex justify-between items-center"
+      >
+        <span class="text-slate-400">{{ month }}</span>
+        <span class="font-medium text-slate-200">{{ formatCurrency(value) }}</span>
+      </div>
+
+      <!-- Fallback if no data exists -->
+      <div v-if="!revenue_chart || Object.keys(revenue_chart).length === 0" class="text-slate-500 italic text-xs">
+        No sales data recorded
+      </div>
+    </div>
+  </div>
                   </div>
 
                   <div class="col-span-12 xl:col-span-7 rounded-2xl border border-white/10 bg-[#15193f]/80 p-4">
-                    <div class="flex items-center justify-between mb-4">
-                      <h3 class="font-semibold">Course Performance</h3>
-                      <span class="text-xs text-slate-400">Monthly</span>
-                    </div>
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-semibold text-slate-200">Course Performance</h3>
+    <span class="text-xs text-slate-400">Real-time Overview</span>
+  </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div class="h-32 rounded-xl bg-[linear-gradient(180deg,rgba(168,85,247,.25),rgba(59,130,246,.05))] border border-white/10"></div>
-                      </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Visual Placeholder or Mini Chart -->
+    <div class="rounded-2xl bg-white/5 border border-white/10 p-4 flex items-center justify-center">
+      <div class="w-full h-32 rounded-xl bg-[linear-gradient(180deg,rgba(168,85,247,.15),rgba(59,130,246,.05))] border border-white/5 flex items-center justify-center">
+         <span class="text-[10px] text-slate-500 uppercase tracking-widest">Performance Metrics</span>
+      </div>
+    </div>
 
-                      <div class="space-y-4">
-                        <div>
-                          <div class="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>Completion Rate</span>
-                            <span>{{ props.course_performance?.completion ?? 90 }}%</span>
-                          </div>
-                          <div class="h-2 rounded-full bg-white/10 overflow-hidden">
-                            <div class="h-full bg-emerald-500" :style="{ width: progressWidth(props.course_performance?.completion ?? 90) }"></div>
-                          </div>
-                        </div>
+    <!-- Dynamic Progress Bars -->
+    <div class="space-y-5">
+      <!-- Completion Rate -->
+      <div>
+        <!-- Completion Rate Example -->
+<div>
+  <div class="flex justify-between text-xs text-slate-400 mb-1">
+    <span>Completion Rate</span>
+    <span>{{ props.course_performance.completion }}%</span>
+  </div>
+  <div class="h-2 rounded-full bg-white/10 overflow-hidden">
+    <div 
+      class="h-full bg-emerald-500 transition-all duration-500" 
+      :style="{ width: props.course_performance.completion + '%' }"
+    ></div>
+  </div>
+</div>
+      </div>
 
-                        <div>
-                          <div class="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>Engagement</span>
-                            <span>{{ props.course_performance?.engagement ?? 77 }}%</span>
-                          </div>
-                          <div class="h-2 rounded-full bg-white/10 overflow-hidden">
-                            <div class="h-full bg-cyan-500" :style="{ width: progressWidth(props.course_performance?.engagement ?? 77) }"></div>
-                          </div>
-                        </div>
+      <!-- Engagement -->
+      <div>
+        <div class="flex justify-between text-xs text-slate-400 mb-2">
+          <span>Engagement</span>
+          <span class="font-medium text-slate-200">{{ course_performance?.engagement ?? 0 }}%</span>
+        </div>
+        <div class="h-2 rounded-full bg-white/10 overflow-hidden">
+          <div 
+            class="h-full bg-cyan-500 transition-all duration-500" 
+            :style="{ width: (course_performance?.engagement ?? 0) + '%' }"
+          ></div>
+        </div>
+      </div>
 
-                        <div>
-                          <div class="flex justify-between text-xs text-slate-400 mb-1">
-                            <span>Average Grade</span>
-                            <span>{{ props.course_performance?.average_grade ?? 88 }}%</span>
-                          </div>
-                          <div class="h-2 rounded-full bg-white/10 overflow-hidden">
-                            <div class="h-full bg-violet-500" :style="{ width: progressWidth(props.course_performance?.average_grade ?? 88) }"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      <!-- Average Grade -->
+      <div>
+        <div class="flex justify-between text-xs text-slate-400 mb-2">
+          <span>Average Grade</span>
+          <span class="font-medium text-slate-200">{{ course_performance?.average_grade ?? 0 }}%</span>
+        </div>
+        <div class="h-2 rounded-full bg-white/10 overflow-hidden">
+          <div 
+            class="h-full bg-violet-500 transition-all duration-500" 
+            :style="{ width: (course_performance?.average_grade ?? 0) + '%' }"
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
                   <div class="col-span-12 xl:col-span-5 rounded-2xl border border-white/10 bg-[#15193f]/80 p-4">
-                    <div class="flex items-center justify-between mb-4">
-                      <h3 class="font-semibold">Platform Overview</h3>
-                      <span class="text-xs text-slate-400">This week</span>
-                    </div>
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="font-semibold text-slate-200">Platform Overview</h3>
+    <span class="text-xs text-slate-400">This week</span>
+  </div>
 
-                    <div class="grid grid-cols-2 gap-3">
-                      <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div class="text-2xl font-bold">{{ props.platform_overview?.thoughts ?? 9564 }}</div>
-                        <div class="text-xs text-slate-400">Thoughts</div>
-                      </div>
-                      <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div class="text-2xl font-bold">{{ props.platform_overview?.students ?? 853 }}</div>
-                        <div class="text-xs text-slate-400">Students</div>
-                      </div>
-                      <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div class="text-2xl font-bold">{{ props.platform_overview?.total_enrollment ?? 7685 }}</div>
-                        <div class="text-xs text-slate-400">Total Enrollment</div>
-                      </div>
-                      <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div class="text-2xl font-bold">{{ props.platform_overview?.new_enrollments ?? 197 }}</div>
-                        <div class="text-xs text-slate-400">New Enrollments</div>
-                      </div>
-                      <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div class="text-2xl font-bold">{{ props.platform_overview?.total_courses ?? 125 }}</div>
-                        <div class="text-xs text-slate-400">Total Courses</div>
-                      </div>
-                      <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div class="text-2xl font-bold">{{ formatCurrency(props.stats?.total_sales ?? 0) }}</div>
-                        <div class="text-xs text-slate-400">Revenue</div>
-                      </div>
-                    </div>
-                  </div>
+  <div class="grid grid-cols-2 gap-3">
+    <!-- Online Users (Replaced 'thoughts' to match backend) -->
+    <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+      <div class="text-2xl font-bold text-emerald-400">
+        {{ props.platform_overview?.online_users ?? 0 }}
+      </div>
+      <div class="text-xs text-slate-400">Online Users</div>
+    </div>
+
+    <!-- Total Students -->
+    <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+      <div class="text-2xl font-bold text-white">
+        {{ props.platform_overview?.students ?? 0 }}
+      </div>
+      <div class="text-xs text-slate-400">Students</div>
+    </div>
+
+    <!-- Total Enrollment -->
+    <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+      <div class="text-2xl font-bold text-white">
+        {{ props.platform_overview?.total_enrollment ?? 0 }}
+      </div>
+      <div class="text-xs text-slate-400">Total Enrollment</div>
+    </div>
+
+    <!-- New Enrollments -->
+    <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+      <div class="text-2xl font-bold text-cyan-400">
+        {{ props.platform_overview?.new_enrollments ?? 0 }}
+      </div>
+      <div class="text-xs text-slate-400">New Enrollments</div>
+    </div>
+
+    <!-- Total Courses -->
+    <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+      <div class="text-2xl font-bold text-white">
+        {{ props.platform_overview?.total_courses ?? 0 }}
+      </div>
+      <div class="text-xs text-slate-400">Total Courses</div>
+    </div>
+
+    <!-- Revenue (Pulling from stats for consistency) -->
+    <div class="rounded-2xl bg-white/5 border border-white/10 p-4">
+      <div class="text-2xl font-bold text-violet-400">
+        {{ formatCurrency(props.stats?.total_sales ?? 0) }}
+      </div>
+      <div class="text-xs text-slate-400">Total Revenue</div>
+    </div>
+  </div>
+</div>
                 </section>
               </main>
             </div>
