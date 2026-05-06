@@ -10,6 +10,14 @@ const props = defineProps({
   }
 })
 
+/* ---------------- PURCHASE LOGIC ---------------- */
+const buyNow = (courseId) => {
+    // Send as an array so the controller finds it in $request->input('course_ids')
+    router.get(route('payments.checkout'), { 
+        course_ids: [courseId] 
+    });
+};
+
 /* ---------------- PROGRESS MAP ---------------- */
 const progressMap = computed(() => {
   const map = {}
@@ -146,7 +154,17 @@ const submitQuiz = () => {
           <div class="bg-gradient-to-r from-green-500 to-emerald-400 h-full transition-all duration-1000" :style="{ width: courseProgress + '%' }"></div>
         </div>
 
-        <div v-if="courseProgress === 100" class="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-center">
+        <div v-if="!course.is_enrolled" class="mt-6 border-t border-white/5 pt-6">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-gray-400">Price</span>
+                <span class="text-2xl font-black text-white">{{ course.price }} ETB</span>
+            </div>
+            <button @click="buyNow(course.id)" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl transition shadow-xl shadow-indigo-600/20">
+                🚀 Enroll Now
+            </button>
+        </div>
+
+        <div v-else-if="courseProgress === 100" class="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl text-center mt-6">
           <p class="text-green-400 text-sm font-medium mb-3">Course Completed!</p>
           <Link :href="route('admin.certificates.show', course.id)" class="block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-green-500/20">
             🎓 Claim Certificate

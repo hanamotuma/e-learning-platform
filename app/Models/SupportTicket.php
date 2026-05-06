@@ -2,6 +2,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\SupportMessage;
 
 class SupportTicket extends Model
 {
@@ -9,6 +10,7 @@ class SupportTicket extends Model
 
     protected $fillable = [
         'subject',
+        
         'user_id',
         'priority',
         'status'

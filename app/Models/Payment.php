@@ -9,33 +9,34 @@ class Payment extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'payment_id';
-
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
         'user_id',
+        'course_id',
         'enrollment_id',
+        'transaction_reference',
+        'chapa_tx_ref',
         'amount',
         'currency',
         'status',
         'payment_method',
-        'transaction_reference',
-        'gateway_response',
+        'payment_details',
+        'chapa_response',
         'paid_at',
     ];
-
-    protected $casts = [
-        'amount' => 'decimal:2',
-        'gateway_response' => 'array',
-        'paid_at' => 'datetime',
-    ];
-
+    
+    // Relationships
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
     }
 
-    public function enrollment()
+    public function course()
     {
-        return $this->belongsTo(Enrollment::class, 'enrollment_id');
+        return $this->belongsTo(Course::class);
     }
 }

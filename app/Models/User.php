@@ -30,6 +30,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
+        'last_seen_at' => 'datetime', // <--- Add this line
         'password' => 'hashed',
     ];
 
@@ -90,5 +91,9 @@ public function redirectRoute()
     public function unreadNotifications()
 {
     return $this->hasMany(Notification::class)->whereNull('read_at');
+}
+public function tickets()
+{
+    return $this->hasMany(SupportTicket::class);
 }
 }

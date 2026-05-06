@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Course;
 use App\Models\Enrollment;
 use Illuminate\Http\Request;
+use App\Models\SupportTicket; // <--- ADD THIS LINE
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -36,6 +37,7 @@ class DashboardController extends Controller
             'completed_courses' => $enrolledCourses->where('status', 'completed')->count(),
             'in_progress_courses' => $enrolledCourses->where('status', 'in_progress')->count(),
             'average_progress' => round($enrolledCourses->avg('progress_percentage') ?? 0, 1),
+            'open_tickets' => SupportTicket::where('status', 'open')->count(),
         ];
         
         $recentCourses = $enrolledCourses->take(4);

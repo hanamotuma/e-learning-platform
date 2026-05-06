@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Report extends Model
 {
@@ -23,8 +26,28 @@ class Report extends Model
         'generated_at' => 'datetime',
     ];
 
-    public function user()
+    /**
+     * Define the generator of the report.
+     */
+    // Inside App\Models\Report.php
+
+public function scopeForUser($query, $user)
+{
+    if ($user->hasRole('admin')) {
+        return $query; // Admin sees everything
+    }
+    return $query->where('user_id', $user->id);
+}
+    public function generator(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * Helper to check if report is ready.
+     */
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
     }
 }

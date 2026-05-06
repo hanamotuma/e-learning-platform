@@ -12,7 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->string('transaction_reference')->unique();
+$table->foreignId('enrollment_id')->nullable()->constrained('enrollments')->onDelete('cascade');            
+$table->string('transaction_reference')->unique();
             $table->string('chapa_tx_ref')->unique();
             $table->decimal('amount', 10, 2);
             $table->string('currency')->default('ETB');

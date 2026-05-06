@@ -45,4 +45,9 @@ class Enrollment extends Model
     {
         return $this->hasMany(Certificate::class, 'enrollment_id');
     }
+    public function payment()
+    {
+        // Since Payment has 'enrollment_id', this is a HasOne relationship
+        return $this->hasOne(Payment::class, 'enrollment_id');
+    }
 }

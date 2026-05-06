@@ -1,10 +1,25 @@
 <script setup>
-import { Head, Link, usePage } from '@inertiajs/vue3'
+import { Head, Link, usePage, useForm } from '@inertiajs/vue3'
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import axios from 'axios' // Ensure axios is imported
+import { useCartStore } from '@/Stores/cart';
 
+const cart = useCartStore();
 // --- INITIALIZATION ---
 const page = usePage();
+const form = useForm({});
 
+const handleEnroll = (courseId) => {
+    // This hits: POST /courses/{course}/enroll
+    form.post(route('enrollment.initiate', courseId), {
+        onSuccess: () => {
+            console.log('Redirecting to Chapa...');
+        },
+        onError: (errors) => {
+            alert('Please login first to enroll in courses.');
+        }
+    });
+};
 // --- AUTH & ROUTING LOGIC ---
 const user = computed(() => page.props.auth?.user);
 const canLogin = computed(() => page.props.canLogin ?? true);
@@ -23,26 +38,24 @@ const dashboardRoute = computed(() => {
 const mobileMenuOpen = ref(false)
 const isScrolled = ref(false)
 const scrollProgress = ref(0)
-const selectedCategory = ref('All')
 const searchQuery = ref('')
 const cartCount = ref(0)
 const activeSection = ref('home')
 const isSubmitting = ref(false)
 const isSubmitted = ref(false)
-const selectedCourse = ref(null)
+
 const isDarkMode = ref(false) 
-const isLoading = ref(true) 
-const maxPrice = ref(100)
+
+
 
 // --- AI CHATBOT STATE ---
 const isChatOpen = ref(false)
 const chatInput = ref('')
 const isTyping = ref(false)
-const chatMessages = ref([
-  { role: 'assistant', content: 'Hi there! I\'m your LearnHub guide. Looking for a specific course or career path today?' }
-])
 const chatScrollContainer = ref(null)
-
+const chatMessages = ref([
+  { role: 'assistant', content: 'Hi there! I\'m LearnHub AI. I can tell you about our courses, current prices, and payment methods. How can I help?' }
+])
 // Form State
 const contactForm = ref({
   first_name: '',
@@ -171,16 +184,7 @@ const allCourses = [
   { id: 6, category: 'Design', title: 'Motion Graphics with After Effects', author: 'Kevin Slide', price: 65.00, rating: 4.9, reviews: '820', image: 'https://images.pexels.com/photos/251225/pexels-photo-251225.jpeg?auto=compress&cs=tinysrgb&w=600', tag: 'Creative', desc: 'Animate like a pro using industry-standard tools.' },
 ]
 
-const filteredCourses = computed(() => {
-  let filtered = allCourses
-  if (selectedCategory.value !== 'All') {
-    filtered = filtered.filter(c => c.category === selectedCategory.value)
-  }
-  if (searchQuery.value) {
-    filtered = filtered.filter(c => c.title.toLowerCase().includes(searchQuery.value.toLowerCase()))
-  }
-  return filtered.filter(c => c.price <= maxPrice.value)
-})
+
 
 // --- EVENT HANDLERS ---
 const addToCart = (e) => {
@@ -198,28 +202,85 @@ const handleContact = () => {
   }, 1500)
 }
 
-const sendMessage = async () => {
-  if (!chatInput.value.trim()) return
-  const userMsg = chatInput.value
-  chatMessages.value.push({ role: 'user', content: userMsg })
-  chatInput.value = ''
-  isTyping.value = true
-  await nextTick()
-  chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight
 
-  setTimeout(async () => {
-    let reply = "That's a great choice! We have several experts in that field."
-    if(userMsg.toLowerCase().match(/price|cheap|cost/)) {
-        reply = "Looking for a deal? Our Marketing courses start as low as $45.00!"
-    } else if (userMsg.toLowerCase().includes('design')) {
-        reply = "Our Design catalog is elite. I highly recommend 'Advanced UI/UX Design Systems'."
+const sendMessage = async () => {
+    if (!chatInput.value.trim() || isTyping.value) return;
+
+    const userText = chatInput.value;
+    chatMessages.value.push({ role: 'user', content: userText });
+    chatInput.value = '';
+    isTyping.value = true;
+    await scrollToBottom();
+
+    try {
+        // No more Ziggy error! No parameters needed.
+        const response = await axios.post(route('chatbot.send'), { 
+            message: userText 
+        });
+
+        chatMessages.value.push({ 
+            role: 'assistant', 
+            content: response.data.message 
+        });
+    } catch (error) {
+        console.error("Chatbot Error:", error);
+        chatMessages.value.push({ 
+            role: 'assistant', 
+            content: "I'm having trouble connecting to LearnHub AI. Please try again!" 
+        });
+    } finally {
+        isTyping.value = false;
+        await scrollToBottom();
     }
-    chatMessages.value.push({ role: 'assistant', content: reply })
-    isTyping.value = false
-    await nextTick()
-    chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight
-  }, 1500)
-}
+};
+const scrollToBottom = async () => {
+    // Wait for Vue to finish updating the DOM with the new message
+    await nextTick(); 
+    
+    // Check if the container exists before trying to scroll
+    if (chatScrollContainer.value) {
+        chatScrollContainer.value.scrollTo({
+            top: chatScrollContainer.value.scrollHeight,
+            behavior: 'smooth' // Makes the scroll look nice and professional
+        });
+    }
+};
+const props = defineProps({
+    courses: Array,
+    categories: Array
+});
+
+const selectedCourse = ref(null);
+const selectedCategory = ref('All');
+const maxPrice = ref(5000); // Set a higher default for ETB
+const isLoading = ref(true);
+
+// Mocking a quick load state
+onMounted(() => {
+    setTimeout(() => {
+        isLoading.value = false;
+    }, 800);
+});
+
+// DYNAMIC FILTERING LOGIC
+const filteredCourses = computed(() => {
+    return props.courses.filter(course => {
+        const matchesCategory = selectedCategory.value === 'All' || course.category?.name === selectedCategory.value;
+        const matchesPrice = course.price <= maxPrice.value;
+        return matchesCategory && matchesPrice;
+    });
+});
+const getIcon = (categoryName) => {
+    const icons = {
+        'Development': '💻',
+        'Design': '🎨',
+        'Business': '📈',
+        'Marketing': '🚀',
+        'Health': '🏥',
+        // Default icon if name doesn't match
+    };
+    return icons[categoryName] || '📚'; 
+};
 </script>
 <template>
   <Head title="LearnHub | Elite Learning Platform" />
@@ -275,25 +336,36 @@ const sendMessage = async () => {
     </button>
   </div>
 
-  <!-- Course Modal -->
   <div v-if="selectedCourse" class="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
-    <div @click="selectedCourse = null" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
-    <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl relative animate-in zoom-in duration-300">
-      <button @click="selectedCourse = null" class="absolute top-6 right-6 w-10 h-10 bg-white dark:bg-slate-800 rounded-full shadow-lg flex items-center justify-center font-bold z-10 hover:bg-red-50 hover:text-red-500 transition-colors">✕</button>
-      <div class="flex flex-col md:flex-row">
-        <img :src="selectedCourse.image" class="w-full md:w-1/2 h-64 md:h-auto object-cover" />
-        <div class="p-8 md:p-12 flex flex-col justify-center">
-          <span class="text-blue-600 font-black text-xs uppercase tracking-widest mb-2">{{ selectedCourse.category }}</span>
-          <h2 class="text-3xl font-black mb-4 leading-tight dark:text-white">{{ selectedCourse.title }}</h2>
-          <p class="text-slate-500 mb-8">{{ selectedCourse.desc }}</p>
-          <div class="flex items-center justify-between mt-auto">
-            <span class="text-4xl font-black dark:text-white">${{ selectedCourse.price }}</span>
-            <button @click="addToCart" class="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-slate-900 transition-all">Enroll Now</button>
-          </div>
+  <div @click="selectedCourse = null" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+  <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl relative animate-in zoom-in duration-300">
+    
+    <button @click="selectedCourse = null" class="absolute top-6 right-6 w-10 h-10 bg-white dark:bg-slate-800 rounded-full shadow-lg flex items-center justify-center font-bold z-10 hover:bg-red-50 hover:text-red-500 transition-colors">✕</button>
+    
+    <div class="flex flex-col md:flex-row">
+      <img :src="'/storage/' + selectedCourse.image" class="w-full md:w-1/2 h-64 md:h-auto object-cover" />
+      
+      <div class="p-8 md:p-12 flex flex-col justify-center">
+        <span class="text-blue-600 font-black text-xs uppercase tracking-widest mb-2">
+          {{ selectedCourse.category?.name }}
+        </span>
+        
+        <h2 class="text-3xl font-black mb-4 leading-tight dark:text-white">{{ selectedCourse.title }}</h2>
+        
+        <p class="text-slate-500 mb-8">{{ selectedCourse.description }}</p>
+        
+        <div class="flex items-center justify-between mt-auto">
+          <span class="text-4xl font-black dark:text-white">{{ selectedCourse.price }} ETB</span>
+          
+          <Link :href="route('payments.checkout', selectedCourse.id)" 
+                class="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-slate-900 transition-all">
+            Enroll Now
+          </Link>
         </div>
       </div>
     </div>
   </div>
+</div>
 
   <!-- Main Content -->
   <div class="min-h-screen bg-[#FDFDFF] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden">
@@ -323,10 +395,16 @@ const sendMessage = async () => {
             <span class="absolute left-4 top-2.5 text-slate-400">🔍</span>
           </div>
 
-          <button class="relative p-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-transform active:scale-90">
-            <span class="text-xl">🛒</span>
-            <span v-if="cartCount > 0" class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-bounce">{{ cartCount }}</span>
-          </button>
+          <Link :href="route('payments.success')" class="relative p-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-transform active:scale-90">
+        <span class="text-xl">🛒</span>
+        
+        <span 
+            v-if="cart.count > 0" 
+            class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-bounce"
+        >
+            {{ cart.count }}
+        </span>
+    </Link>
 
           <div class="hidden sm:flex items-center space-x-3">
 <template v-if="user">
@@ -453,24 +531,32 @@ const sendMessage = async () => {
 
       <!-- Categories Section -->
       <section id="categories" class="py-20 bg-white dark:bg-slate-950">
-        <div class="max-w-7xl mx-auto px-6 text-center">
-            <h2 class="text-4xl font-black mb-12 dark:text-white">Explore by <span class="text-blue-600">Category</span></h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                <button v-for="cat in categories" :key="cat.name" 
-                    @click="selectedCategory = cat.name; scrollTo('courses')"
-                    :class="selectedCategory === cat.name ? 'bg-blue-600 text-white scale-105 shadow-xl' : 'bg-slate-50 dark:bg-slate-900 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-800'"
-                    class="p-8 rounded-[2rem] transition-all duration-300 group">
-                    <span class="text-4xl block mb-4 group-hover:scale-125 transition-transform">{{ cat.icon }}</span>
-                    <p class="font-black text-sm uppercase tracking-widest">{{ cat.name }}</p>
-                </button>
-            </div>
-        </div>
-      </section>
+  <div class="max-w-7xl mx-auto px-6 text-center">
+    <h2 class="text-4xl font-black mb-12 dark:text-white">Explore by <span class="text-blue-600">Category</span></h2>
+    
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+      
+      
 
-      <!-- Courses Section -->
+      <button v-for="cat in categories" :key="cat.id" 
+        @click="selectedCategory = cat.name; scrollTo('courses')"
+        :class="selectedCategory === cat.name ? 'bg-blue-600 text-white scale-105 shadow-xl' : 'bg-slate-50 dark:bg-slate-900 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-800'"
+        class="p-8 rounded-[2rem] transition-all duration-300 group">
+        
+        <span class="text-4xl block mb-4 group-hover:scale-125 transition-transform">
+            {{ cat.icon || getIcon(cat.name) }}
+        </span>
+        
+        <p class="font-black text-sm uppercase tracking-widest">{{ cat.name }}</p>
+      </button>
+
+    </div>
+  </div>
+</section>
+
       <section id="courses" class="py-24 bg-slate-50 dark:bg-slate-900/50 scroll-mt-20">
-        <div class="max-w-7xl mx-auto px-6">
-          <div class="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-8">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-8">
             <div>
                 <h2 class="text-4xl font-black dark:text-white mb-2">{{ selectedCategory }} Courses</h2>
                 <p class="text-slate-500 text-sm">Showing {{ filteredCourses.length }} elite programs</p>
@@ -479,42 +565,59 @@ const sendMessage = async () => {
             <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-sm border dark:border-slate-700 min-w-[300px]">
                 <div class="flex justify-between mb-2">
                     <span class="text-xs font-black uppercase dark:text-slate-400">Max Price</span>
-                    <span class="text-sm font-black text-blue-600">${{ maxPrice }}</span>
+                    <span class="text-sm font-black text-blue-600">{{ maxPrice }} ETB</span>
                 </div>
-                <input type="range" v-model="maxPrice" min="40" max="100" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                <input type="range" v-model="maxPrice" min="0" max="10000" step="100" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
             </div>
-          </div>
+        </div>
 
-          <div v-if="isLoading" class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div v-if="isLoading" class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
             <div v-for="i in 3" :key="i" class="bg-white dark:bg-slate-800 rounded-[2.5rem] h-96 animate-pulse p-8">
                 <div class="bg-slate-200 dark:bg-slate-700 h-48 rounded-[2rem] mb-6"></div>
                 <div class="bg-slate-200 dark:bg-slate-700 h-6 w-3/4 rounded mb-4"></div>
-                <div class="bg-slate-200 dark:bg-slate-700 h-6 w-1/2 rounded"></div>
             </div>
-          </div>
-
-          <transition-group v-else name="list" tag="div" class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <div v-for="course in filteredCourses" :key="course.id" @click="selectedCourse = course" class="bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-[0_20px_50px_rgba(8,112,184,0.1)] transition-all duration-500 group cursor-pointer">
-              <div class="relative h-64 overflow-hidden">
-                <img :src="course.image" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
-                <div class="absolute top-6 left-6 bg-white/95 backdrop-blur px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">{{ course.tag }}</div>
-              </div>
-              <div class="p-8">
-                <div class="flex items-center justify-between mb-4">
-                  <span class="text-blue-600 font-black text-[10px] uppercase tracking-widest">{{ course.category }}</span>
-                  <div class="flex items-center text-yellow-400 text-sm">★ <span class="text-slate-900 dark:text-slate-200 ml-1 font-bold">{{ course.rating }}</span></div>
-                </div>
-                <h3 class="text-xl font-black mb-2 leading-tight group-hover:text-blue-600 transition-colors dark:text-white">{{ course.title }}</h3>
-                <p class="text-slate-400 text-sm mb-8">Prof. {{ course.author }}</p>
-                <div class="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-700">
-                  <span class="text-3xl font-black dark:text-white">${{ course.price }}</span>
-                  <button @click="addToCart" class="w-12 h-12 bg-slate-900 dark:bg-blue-600 text-white rounded-2xl flex items-center justify-center hover:bg-blue-600 hover:-rotate-12 transition-all">＋</button>
-                </div>
-              </div>
-            </div>
-          </transition-group>
         </div>
-      </section>
+
+        <transition-group v-else name="list" tag="div" class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <div v-for="course in filteredCourses" :key="course.id" @click="selectedCourse = course" 
+                 class="bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-[0_20px_50px_rgba(8,112,184,0.1)] transition-all duration-500 group cursor-pointer">
+                
+                <div class="relative h-64 overflow-hidden">
+                    <img :src="'/storage/' + course.image" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                    <div class="absolute top-6 left-6 bg-white/95 backdrop-blur px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">
+                        {{ course.level || 'Beginner' }}
+                    </div>
+                </div>
+
+                <div class="p-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-blue-600 font-black text-[10px] uppercase tracking-widest">{{ course.category?.name }}</span>
+                        <div class="flex items-center text-yellow-400 text-sm">★ 
+                            <span class="text-slate-900 dark:text-slate-200 ml-1 font-bold">{{ course.rating || '5.0' }}</span>
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-xl font-black mb-2 leading-tight group-hover:text-blue-600 transition-colors dark:text-white">{{ course.title }}</h3>
+                    <p class="text-slate-400 text-sm mb-8">By {{ course.instructor_name || 'Admin' }}</p>
+                    
+                    <div class="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-700">
+                        <span class="text-3xl font-black dark:text-white">{{ course.price }} ETB</span>
+                        
+                        <Link 
+    :href="route('payments.checkout', course.id)" 
+    @click.stop
+    as="button"
+    type="button"
+    class="w-12 h-12 bg-slate-900 dark:bg-blue-600 text-white rounded-2xl flex items-center justify-center hover:bg-blue-600 hover:-rotate-12 transition-all shadow-lg active:scale-95"
+>
+    <span class="text-xl">＋</span>
+</Link>
+                    </div>
+                </div>
+            </div>
+        </transition-group>
+    </div>
+</section>
 
       <!-- Features Section -->
       <section id="features" class="py-24 bg-white dark:bg-slate-950 scroll-mt-20 overflow-hidden">

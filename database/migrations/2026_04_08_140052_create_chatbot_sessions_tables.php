@@ -15,8 +15,7 @@ return new class extends Migration
         $table->enum('status', ['active', 'ended'])->default('active');
         
         // This is the line that was causing the error:
-        $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-        
+$table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');        
         $table->timestamps();
     });
 }
