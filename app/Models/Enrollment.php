@@ -2,31 +2,28 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Enrollment extends Model
 {
     use HasFactory;
 
+    protected $table = 'enrollments';
+
     protected $fillable = [
-        'user_id',
-        'course_id',
-        'status',
-        'amount_paid',
-        'enrolled_at',
-        'completed_at',
-        'progress_percentage'
+        'user_id', 'course_id', 'progress', 'completed', 
+        'enrolled_at', 'payment_status', 'amount_paid',
+        'transaction_id', 'payment_method'
     ];
 
     protected $casts = [
         'enrolled_at' => 'datetime',
-        'completed_at' => 'datetime',
-        'amount_paid' => 'decimal:2',
-        'progress_percentage' => 'integer'
+        'progress' => 'integer',
+        'completed' => 'boolean',
+        'amount_paid' => 'decimal:2'
     ];
 
-    // Relationships
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -35,32 +32,5 @@ class Enrollment extends Model
     public function course()
     {
         return $this->belongsTo(Course::class);
-    }
-
-    public function payment()
-    {
-        return $this->hasOne(Payment::class);
-    }
-
-    // Scopes
-    public function scopeActive($query)
-    {
-        return $query->where('status', 'active');
-    }
-
-    public function scopeCompleted($query)
-    {
-        return $query->where('status', 'completed');
-    }
-
-    // Helper methods
-    public function isActive()
-    {
-        return $this->status === 'active';
-    }
-
-    public function isCompleted()
-    {
-        return $this->status === 'completed';
     }
 }

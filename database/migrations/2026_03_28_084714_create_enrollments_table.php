@@ -1,5 +1,4 @@
 <?php
-// database/migrations/xxxx_xx_xx_create_enrollments_table.php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,15 +12,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->constrained()->onDelete('cascade');
-            $table->enum('status', ['pending', 'active', 'completed', 'cancelled'])->default('pending');
-            $table->decimal('amount_paid', 10, 2)->default(0);
-            $table->timestamp('enrolled_at')->nullable();
-            $table->timestamp('completed_at')->nullable();
-            $table->integer('progress_percentage')->default(0);
+            $table->integer('progress')->default(0);
+            $table->boolean('completed')->default(false);
+            $table->timestamp('enrolled_at')->useCurrent();
+            $table->string('payment_status')->default('pending');
+            $table->decimal('amount_paid', 10, 2);
             $table->timestamps();
             
             $table->unique(['user_id', 'course_id']);
-            $table->index(['user_id', 'status']);
         });
     }
 

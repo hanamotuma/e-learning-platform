@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
                 'email' => 'admin@edumind.com',
                 'password' => Hash::make('password'),
                 'is_active' => 1,
+                
             ]
         );
         $admin->assignRole('admin');
@@ -41,20 +42,19 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
-        $instructor = User::first() ?? User::factory()->create([
-    'username' => 'instructor1',
-    'full_name' => 'Hana Motuma',
-    
-]);
-Course::create([
-    'title' => 'Complete Web Development Bootcamp',
-    'description' => 'Learn full-stack development',
-    'price' => 49.99,
-    'difficulty_level' => 'beginner',
-    'instructor_id' => $instructor->id, // This was likely missing or null
-    'category_id' => 1,
-    'status' => 'published',
-]);
+        $instructor->assignRole('instructor');
+
+      dd($instructor, $instructor->id);
+
+        Course::create([
+            'title' => 'Complete Web Development Bootcamp',
+            'description' => 'Learn full-stack development',
+            'price' => 49.99,
+            'difficulty_level' => 'beginner',
+            'instructor_id' => $instructor->id, 
+            'category_id' => 1,
+            'status' => 'published',
+        ]);
 
         
         $student = User::firstOrCreate(
@@ -103,13 +103,11 @@ Course::create([
             Course::firstOrCreate(
                 ['title' => $courseData['title']],
                 array_merge($courseData, [
-                    'instructor_id' => $instructor->user_id,
+                    'instructor_id' => $instructor->id, // ✅ FIXED (was user_id)
                     'category_id' => 1,
                     'status' => 'published',
                 ])
             );
         }
-
-        
     }
 }

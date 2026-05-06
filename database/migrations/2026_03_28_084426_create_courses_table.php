@@ -4,33 +4,34 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateCoursesTable extends Migration
+return new class extends Migration
 {
-   public function up()
+    public function up()
     {
         Schema::create('courses', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->string('slug')->unique();
-            $table->text('description');
-            $table->text('what_you_will_learn')->nullable();
-            $table->text('requirements')->nullable();
-            $table->string('image')->nullable();
-            $table->string('video_url')->nullable();
-
-            $table->decimal('price', 10, 2)->default(0);
-            $table->foreignId('category_id')->constrained();
-            $table->foreignId('instructor_id')->constrained('users');
-            $table->enum('difficulty_level', ['beginner', 'intermediate', 'advanced'])->default('beginner');
-            $table->integer('duration_weeks')->nullable();
-            $table->boolean('is_published')->default(false);
-            $table->timestamp('published_at')->nullable();
+            $table->text('description')->nullable();
+            $table->string('instructor_id');
+            $table->decimal('price', 10, 2);
+            $table->decimal('original_price', 10, 2);
+            $table->float('rating')->default(0);
+            $table->integer('reviews')->default(0);
+            $table->integer('students')->default(0);
+            $table->integer('hours');
+            $table->string('image');
+            $table->string('category_id');
+            $table->string('badge')->nullable();
+            $table->string('level');
+            $table->date('date');
+            $table->string('status')->default('active'); // active, inactive, archived
+            $table->string('difficulty_level')->nullable();
             $table->timestamps();
         });
     }
-    public function down(): void
+
+    public function down()
     {
         Schema::dropIfExists('courses');
-
     }
 };

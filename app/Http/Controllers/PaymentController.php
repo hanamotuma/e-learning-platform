@@ -4,80 +4,200 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\Enrollment;
-use App\Models\Payment;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class PaymentController extends Controller
 {
-    public function checkout(Course $course)
+    public function showPaymentPage()
     {
-        // Check if user is already enrolled
-        $existingEnrollment = Enrollment::where('user_id', Auth::id())
-            ->where('course_id', $course->course_id)
-            ->first();
-
-        if ($existingEnrollment) {
-            return redirect()->route('courses.show', $course->course_id)
-                ->with('info', 'You are already enrolled in this course.');
+        $pendingPayment = session()->get('pending_payment');
+        
+        if (!$pendingPayment) {
+            return redirect()->route('home')->with('error', 'No pending payment');
         }
-
-        return Inertia::render('Payments/Checkout', [
-            'course' => $course,
+        
+        return Inertia::render('PaymentPage', [
+            'total' => $pendingPayment['total'],
+            'method' => $pendingPayment['method'],
+            'cart' => $pendingPayment['cart']
         ]);
     }
-
-    public function process(Request $request)
+    
+    public function processTelebirr(Request $request)
     {
         $request->validate([
-            'course_id' => 'required|exists:courses,course_id',
-            'payment_method' => 'required|string',
+            'phone_number' => 'required|string|regex:/^09[0-9]{8}$/'
         ]);
-
-        $course = Course::findOrFail($request->course_id);
-        $user = Auth::user();
-
-        // Check if already enrolled
-        $existingEnrollment = Enrollment::where('user_id', $user->user_id)
-            ->where('course_id', $course->course_id)
-            ->first();
-
-        if ($existingEnrollment) {
-            return redirect()->route('courses.show', $course->course_id)
-                ->with('info', 'You are already enrolled in this course.');
+        
+        $pendingPayment = session()->get('pending_payment');
+        
+        if (!$pendingPayment) {
+            return response()->json(['success' => false, 'message' => 'No pending payment']);
         }
-
-        // Create enrollment
-        $enrollment = Enrollment::create([
-            'user_id' => $user->user_id,
-            'course_id' => $course->course_id,
-            'status' => 'enrolled',
-            'enrolled_at' => now(),
+        
+        // Generate fake transaction ID for Telebirr
+        $transactionId = 'TB_' . strtoupper(Str::random(16)) . '_' . time();
+        
+        // Store payment info in session
+        session()->put('payment_completed', [
+            'transaction_id' => $transactionId,
+            'payment_method' => 'telebirr',
+            'amount' => $pendingPayment['total'],
+            'phone_number' => $request->phone_number,
+            'status' => 'completed',
+            'completed_at' => now()
         ]);
-
-        // Create payment record
-        $payment = Payment::create([
-            'user_id' => $user->user_id,
-            'enrollment_id' => $enrollment->enrollment_id,
-            'amount' => $course->price ?? 0,
-            'currency' => 'ETB',
-            'status' => 'successful', // For demo purposes
-            'payment_method' => $request->payment_method,
-            'transaction_reference' => 'TXN-' . uniqid(),
-            'paid_at' => now(),
+        
+        // Complete enrollment
+        return $this->completeEnrollmentAndRedirect();
+    }
+    
+    public function processCBE(Request $request)
+    {
+        $request->validate([
+            'account_number' => 'required|string|regex:/^10[0-9]{10}$/',
+            'phone_number' => 'required|string|regex:/^09[0-9]{8}$/'
         ]);
-
-        return redirect()->route('payments.success');
+        
+        $pendingPayment = session()->get('pending_payment');
+        
+        if (!$pendingPayment) {
+            return response()->json(['success' => false, 'message' => 'No pending payment']);
+        }
+        
+        // Generate fake transaction ID for CBE Birr
+        $transactionId = 'CBE_' . strtoupper(Str::random(16)) . '_' . time();
+        
+        // Store payment info in session
+        session()->put('payment_completed', [
+            'transaction_id' => $transactionId,
+            'payment_method' => 'cbe_birr',
+            'amount' => $pendingPayment['total'],
+            'account_number' => $request->account_number,
+            'phone_number' => $request->phone_number,
+            'status' => 'completed',
+            'completed_at' => now()
+        ]);
+        
+        // Complete enrollment
+        return $this->completeEnrollmentAndRedirect();
     }
-
-    public function success()
+    
+    public function initializeChapa(Request $request)
     {
-        return Inertia::render('Payments/Success');
+        $pendingPayment = session()->get('pending_payment');
+        
+        if (!$pendingPayment) {
+            return response()->json(['success' => false, 'message' => 'No pending payment']);
+        }
+        
+        // Generate fake transaction ID for Chapa
+        $transactionId = 'CHAPA_' . strtoupper(Str::random(16)) . '_' . time();
+        
+        // Simulate Chapa payment initialization
+        // In a real scenario, this would call Chapa API
+        $checkoutUrl = route('payment.chapa.callback', ['tx_ref' => $transactionId]);
+        
+        return response()->json([
+            'success' => true,
+            'transaction_id' => $transactionId,
+            'checkout_url' => $checkoutUrl
+        ]);
     }
-
-    public function cancel()
+    
+    public function chapaCallback(Request $request)
     {
-        return Inertia::render('Payments/Cancel');
+        $transactionId = $request->get('tx_ref');
+        $status = $request->get('status', 'success');
+        
+        $pendingPayment = session()->get('pending_payment');
+        
+        if (!$pendingPayment) {
+            return redirect()->route('home')->with('error', 'No pending payment');
+        }
+        
+        if ($status === 'success') {
+            // Store payment info in session
+            session()->put('payment_completed', [
+                'transaction_id' => $transactionId,
+                'payment_method' => 'chapa',
+                'amount' => $pendingPayment['total'],
+                'status' => 'completed',
+                'completed_at' => now()
+            ]);
+            
+            // Complete enrollment
+            return $this->completeEnrollmentAndRedirect();
+        }
+        
+        return redirect()->route('payment.cancel')->with('error', 'Payment failed or cancelled');
+    }
+    
+    private function completeEnrollmentAndRedirect()
+    {
+        $pendingPayment = session()->get('pending_payment');
+        $paymentCompleted = session()->get('payment_completed');
+        
+        if (!$pendingPayment || !$paymentCompleted) {
+            return redirect()->route('home')->with('error', 'Invalid payment session');
+        }
+        
+        $user = auth::user();
+        $courseIds = collect($pendingPayment['cart'])->pluck('id')->toArray();
+        
+        DB::transaction(function () use ($user, $courseIds, $paymentCompleted, $pendingPayment) {
+            foreach ($courseIds as $courseId) {
+                $course = Course::find($courseId);
+                
+                if ($course && !$user->courses()->where('course_id', $courseId)->exists()) {
+                    Enrollment::create([
+                        'user_id' => $user->id,
+                        'course_id' => $courseId,
+                        'progress' => 0,
+                        'completed' => false,
+                        'enrolled_at' => now(),
+                        'payment_status' => 'completed',
+                        'amount_paid' => $course->price,
+                        'transaction_id' => $paymentCompleted['transaction_id'],
+                        'payment_method' => $paymentCompleted['payment_method']
+                    ]);
+                    
+                    $course->increment('students');
+                }
+            }
+            
+            // Create payment record
+            \App\Models\Payment::create([
+                'user_id' => $user->id,
+                'transaction_id' => $paymentCompleted['transaction_id'],
+                'amount' => $pendingPayment['total'],
+                'payment_method' => $paymentCompleted['payment_method'],
+                'status' => 'completed',
+                'payment_data' => json_encode($paymentCompleted)
+            ]);
+        });
+        
+        // Clear sessions
+        session()->forget('pending_payment');
+        session()->forget('cart');
+        session()->forget('payment_completed');
+        
+        // Redirect to student dashboard with success message
+        return redirect()->route('student.dashboard')->with('success', 'Payment successful! You are now enrolled in your courses.');
+    }
+    
+    public function paymentSuccess()
+    {
+        // This method is kept for backward compatibility
+        return redirect()->route('student.dashboard');
+    }
+    
+    public function paymentCancel()
+    {
+        session()->forget('pending_payment');
+        return Inertia::render('PaymentCancel');
     }
 }

@@ -8,6 +8,7 @@ use App\Models\Enrollment;
 use App\Models\Review;
 use App\Models\LiveSession;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
@@ -18,7 +19,8 @@ class DashboardController extends Controller
         // Get instructor's courses with stats
         $courses = Course::where('instructor_id', $instructor->id)
             ->withCount('enrollments')
-            ->withSum('enrollments', 'amount')
+            // Match 'amount_paid' from your migration
+            ->withSum('enrollments', 'amount_paid') 
             ->get()
             ->map(function ($course) {
                 return [
@@ -26,7 +28,8 @@ class DashboardController extends Controller
                     'title' => $course->title,
                     'students' => $course->enrollments_count,
                     'progress' => $course->completion_rate ?? 0,
-                    'revenue' => $course->enrollments_sum_amount ?? 0,
+                    // Eloquent names this: {relation}_sum_{column}
+                    'revenue' => $course->enrollments_sum_amount_paid ?? 0,
                     'rating' => $course->average_rating ?? 0,
                     'status' => $course->status,
                     'thumbnail' => $course->thumbnail,
@@ -46,8 +49,8 @@ class DashboardController extends Controller
                     'student' => $enrollment->user->name,
                     'course' => $enrollment->course->title,
                     'date' => $enrollment->created_at->format('Y-m-d'),
-                    'amount' => $enrollment->amount,
-                    'status' => $enrollment->payment_status,
+                    'amount' => $enrollment->amount_paid, // Match 'amount_paid'
+                    'status' => $enrollment->status, // Use 'status' as defined in migration
                 ];
             });
         
@@ -86,15 +89,16 @@ class DashboardController extends Controller
                 ];
             });
         
-        // Calculate stats
+        // Calculate totals for the summary stats
         $stats = [
             'total_students' => Enrollment::whereIn('course_id', $courses->pluck('id'))->count(),
-            'total_revenue' => $courses->sum('enrollments_sum_amount'),
+            // Sum the mapped revenue values from the $courses collection
+            'total_revenue' => $courses->sum('revenue'),
             'active_courses' => $courses->where('status', 'published')->count(),
-            'avg_rating' => round($courses->avg('average_rating'), 1),
+            'avg_rating' => round($courses->avg('rating'), 1),
         ];
         
-        return inertia('Instructor/Dashboard', [
+        return inertia::render('Instructor/Dashboard', [
             'courses' => $courses,
             'recentEnrollments' => $recentEnrollments,
             'pendingReviews' => $pendingReviews,

@@ -10,6 +10,7 @@ export default defineConfig({
         laravel({
             input: ['resources/js/app.ts'],
             refresh: true,
+            ssr: false,
         }),
         vue({
             template: {
@@ -20,6 +21,14 @@ export default defineConfig({
             },
         }),
     ],
+    server: {
+        watch:{
+            usePolling: true,
+            interval: 100,
+        },
+        host: 'localhost',
+        port: 5173,
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './resources/js'),

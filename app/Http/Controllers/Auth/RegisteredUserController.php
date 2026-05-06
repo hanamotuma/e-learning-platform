@@ -12,53 +12,39 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
-// In RegisteredUserController.php or where you handle registration
-protected function redirectTo()
-{
-    // Check if user is a student (you might have a role field)
-    if (Auth::user()->role === 'student') {
-        return route('student.dashboard');
-    }
-    return route('dashboard');
-}
-
-
     public function create(): Response
     {
         return Inertia::render('auth/Register');
     }
 
-    /**
-     * Handle an incoming registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
+            'username' => 'required|string|max:255|unique:users',
             'name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:'.User::class,
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'email' => 'required|string|lowercase|email|max:255|unique:users',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user = User::create([
-            'name' => $request->name,
+            'username' => $request->username,
+            'full_name' => $request->name,
             'email' => $request->email,
-            'username' => strtolower(str_replace(' ', '_', $request->name)), // Simple username generation
             'password' => Hash::make($request->password),
             'is_active' => true,
         ]);
-        
-        $user->assignRole('student');   
+
+        // Assign student role - Make sure role exists
+        $user->assignRole('student');
+
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect($user->redirectRoute());
+        // Redirect to home instead of dashboard to avoid role issues
+        return redirect()->route('home', ['showCart' => true])->with('success', 'Registration successful! Welcome to EduMind.');
     }
 }

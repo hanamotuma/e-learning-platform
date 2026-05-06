@@ -11,12 +11,15 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
+            $table->string('reference')->unique();
+            $table->json('data');
+            $table->timestamp('expires_at');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('course_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('enrollment_id')->nullable()->constrained()->onDelete('set null');
             $table->string('transaction_id')->unique()->nullable();
             $table->decimal('amount', 10, 2);
-            $table->string('currency')->default('USD');
+            $table->string('currency')->default('ETB');
             $table->enum('status', ['pending', 'completed', 'failed', 'refunded'])->default('pending');
             $table->string('payment_method')->nullable();
             $table->string('payment_gateway')->default('stripe'); // stripe, paypal, etc.
@@ -33,5 +36,6 @@ return new class extends Migration
     public function down()
     {
         Schema::dropIfExists('payments');
+        Schema::dropIfExists('payment_sessions'); // Drop the payment_sessions table as well
     }
 };

@@ -3,63 +3,94 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany; 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Course extends Model
 {
     use HasFactory;
+    
 
-    protected $fillable = [
-        'title',
-        'slug',
-        'description',
-        'what_you_will_learn',
-        'requirements',
-        'price',
-        'category_id',
-        'instructor_id',
-        'difficulty_level',
-        'duration_weeks',
-        'image',
-        'video_url',
-        'is_published',
-    ];
+   protected $fillable = [
+    'title',
+    'slug',
+    'description',
+    'price',
+    'instructor_id', 
+    'category_id',
+    'difficulty_level',
+    'status',
+    'instructor_bio',
+    'rating',
+    'reviews_count',
+    'image_url',
+    'duration_hours',
+    'is_published',
+    'curriculum',
+    'requirements',
+    'learning_outcomes',
+ ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'is_published' => 'boolean',
         'duration_weeks' => 'integer',
-    ];
+        'curriculum' => 'array',
+        'requirements' => 'array',
+        'learning_outcomes' => 'array',
+            ];
 
     // Relationships
-    public function category()
+    public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
-    public function instructor()
+    public function instructor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'instructor_id');
     }
 
-    public function sections()
+    public function sections(): HasMany
     {
         return $this->hasMany(Section::class)->orderBy('order_position');
     }
 
-    public function lessons()
+    public function lessons(): HasMany
     {
         return $this->hasManyThrough(Lesson::class, Section::class);
     }
 
-    public function reviews()
+    public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
     }
 
-    public function enrollments()
+    public function enrollments(): HasMany
     {
         return $this->hasMany(Enrollment::class);
+    }
+    public function students(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'enrollments')
+            ->withPivot('status', 'enrolled_at')
+            ->wherePivot('status', 'active');
+    }
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+    public function getFinalPriceAttribute()
+    {
+        // Placeholder for discount logic
+        return $this->price;
+    }
+    public function getIsEnrolledByCurrentUserAttribute(){
+
+    if (!auth()->check()) return false;
+    return $this->students()->where('user_id', auth()->id())->exists();
+
     }
 
     // Helper methods

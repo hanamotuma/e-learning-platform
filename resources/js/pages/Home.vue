@@ -1,650 +1,1161 @@
 <script setup>
-import { Head, Link, usePage } from '@inertiajs/vue3'
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { Link , router, usePage} from '@inertiajs/vue3'
+import axios from 'axios'
+import { 
+  BookOpen, Calendar, MessageCircle, Bell, Settings, ChevronRight, TrendingUp,
+  Award, Clock, Play, LogOut, HelpCircle, FileText, Moon, Sun, Home,
+  CheckCircle, Video, Users, X, Star, User, Search, Filter, ShoppingCart,
+  Heart, Share2, ChevronLeft, ChevronDown, Menu, XCircle, Globe, Shield,
+  Headphones, Zap, Target, BarChart3, Briefcase, Code, Palette, Megaphone,
+  Database, Smartphone, Trash2, Plus, Minus, CreditCard, Gift, Truck
+} from 'lucide-vue-next'
 
-// --- INITIALIZATION ---
-const page = usePage();
-
-// --- AUTH & ROUTING LOGIC ---
-const user = computed(() => page.props.auth?.user);
-const canLogin = computed(() => page.props.canLogin ?? true);
-const canRegister = computed(() => page.props.canRegister ?? true);
-
-const dashboardRoute = computed(() => {
-    if (!user.value) return route('login');
-    
-    // Switch based on role column in your database
-    return user.value.role === 'admin' 
-        ? route('admin.dashboard') 
-        : route('dashboard'); 
-});
-
-// --- STATE MANAGEMENT ---
-const mobileMenuOpen = ref(false)
+// Theme & UI state
+const isDarkMode = ref(false)
+const isMobileMenuOpen = ref(false)
 const isScrolled = ref(false)
-const scrollProgress = ref(0)
-const selectedCategory = ref('All')
+const scrollPercentage = ref(0)
+const selectedCategory = ref('all')
 const searchQuery = ref('')
-const cartCount = ref(0)
-const activeSection = ref('home')
-const isSubmitting = ref(false)
-const isSubmitted = ref(false)
-const selectedCourse = ref(null)
-const isDarkMode = ref(false) 
-const isLoading = ref(true) 
-const maxPrice = ref(100)
+const sortBy = ref('popular')
+const currentPage = ref('home')
 
-// --- AI CHATBOT STATE ---
-const isChatOpen = ref(false)
-const chatInput = ref('')
-const isTyping = ref(false)
-const chatMessages = ref([
-  { role: 'assistant', content: 'Hi there! I\'m your LearnHub guide. Looking for a specific course or career path today?' }
+// Cart state - Load from localStorage on initialization
+const cartItems = ref([])
+
+
+// Navigation items with their section IDs
+const navItems = [
+  { name: 'Home', id: 'home' },
+  { name: 'Courses', id: 'courses' },
+  { name: 'Categories', id: 'categories' },
+  { name: 'Contact', id: 'contact' }
+]
+
+// Categories
+const categories = [
+  { id: 'all', name: 'All', icon: BookOpen },
+  { id: 'development', name: 'Development', icon: Code },
+  { id: 'design', name: 'Design', icon: Palette },
+  { id: 'business', name: 'Business', icon: Briefcase },
+  { id: 'marketing', name: 'Marketing', icon: Megaphone },
+  { id: 'data', name: 'Data Science', icon: Database }
+]
+
+// Featured courses - All 26 courses
+const featuredCourses = ref([
+  {
+    id: 1,
+    title: 'The Complete Web Development Bootcamp 2026',
+    instructor: 'Dr. Angela Yu',
+    price: 4990,
+    originalPrice: 19990,
+    rating: 4.8,
+    reviews: 12450,
+    students: 125000,
+    hours: 45,
+    image: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=500',
+    category: 'development',
+    badge: 'Bestseller',
+    level: 'Beginner to Advanced',
+    date: '2026-01-15',
+    inCart: false
+  },
+  {
+    id: 2,
+    title: 'Advanced UI/UX Design Masterclass',
+    instructor: 'Sarah Johnson',
+    price: 3990,
+    originalPrice: 14990,
+    rating: 4.9,
+    reviews: 8450,
+    students: 45000,
+    hours: 32,
+    image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=500',
+    category: 'design',
+    badge: 'Top Rated',
+    level: 'Intermediate',
+    date: '2026-02-01',
+    inCart: false
+  },
+  {
+    id: 3,
+    title: 'Artificial Intelligence A-Z 2026',
+    instructor: 'Prof. Andrew Ng',
+    price: 5990,
+    originalPrice: 24990,
+    rating: 4.9,
+    reviews: 15600,
+    students: 89000,
+    hours: 52,
+    image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=500',
+    category: 'data',
+    badge: 'Trending',
+    level: 'All Levels',
+    date: '2026-01-10',
+    inCart: false
+  },
+  {
+    id: 4,
+    title: 'Digital Marketing & Growth Hacking',
+    instructor: 'Gary Vee',
+    price: 3490,
+    originalPrice: 12990,
+    rating: 4.7,
+    reviews: 9820,
+    students: 67000,
+    hours: 28,
+    image: 'https://images.unsplash.com/photo-1432888622747-4eb9a8f2c293?w=500',
+    category: 'marketing',
+    badge: 'Popular',
+    level: 'Beginner',
+    date: '2026-02-10',
+    inCart: false
+  },
+  {
+    id: 5,
+    title: 'iOS & Swift - The Complete Guide',
+    instructor: 'Paul Hudson',
+    price: 4490,
+    originalPrice: 17990,
+    rating: 4.8,
+    reviews: 5630,
+    students: 34000,
+    hours: 48,
+    image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=500',
+    category: 'development',
+    badge: 'Updated',
+    level: 'Intermediate',
+    date: '2026-01-20',
+    inCart: false
+  },
+  {
+    id: 6,
+    title: 'Project Management Professional (PMP)',
+    instructor: 'Joseph Phillips',
+    price: 3990,
+    originalPrice: 15990,
+    rating: 4.6,
+    reviews: 12400,
+    students: 78000,
+    hours: 35,
+    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500',
+    category: 'business',
+    badge: 'Certification Prep',
+    level: 'All Levels',
+    date: '2026-01-05',
+    inCart: false
+  },
+  {
+    id: 7,
+    title: 'Python for Data Science & Machine Learning',
+    instructor: 'Jose Portilla',
+    price: 5490,
+    originalPrice: 19990,
+    rating: 4.8,
+    reviews: 18700,
+    students: 112000,
+    hours: 38,
+    image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=500',
+    category: 'data',
+    badge: 'Best for Beginners',
+    level: 'Beginner',
+    date: '2026-02-05',
+    inCart: false
+  },
+  {
+    id: 8,
+    title: 'The Complete Digital Marketing Course',
+    instructor: 'Phil Ebiner',
+    price: 2990,
+    originalPrice: 9990,
+    rating: 4.5,
+    reviews: 5620,
+    students: 48000,
+    hours: 24,
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500',
+    category: 'marketing',
+    badge: 'Hot & New',
+    level: 'All Levels',
+    date: '2026-02-12',
+    inCart: false
+  },
+  {
+    id: 9,
+    title: 'OpenClaw: Build & Deploy Real AI Agents',
+    instructor: 'Alet Mely',
+    price: 3799,
+    originalPrice: 14999,
+    rating: 4.7,
+    reviews: 8930,
+    students: 52000,
+    hours: 42,
+    image: 'https://images.unsplash.com/photo-1674027444485-cec3da58eefd?w=500',
+    category: 'development',
+    badge: 'New Release',
+    level: 'Intermediate',
+    date: '2026-02-15',
+    inCart: false
+  },
+  {
+    id: 10,
+    title: 'Natural Language Processing with Deep Learning',
+    instructor: 'John Smith',
+    price: 1299,
+    originalPrice: 7990,
+    rating: 4.6,
+    reviews: 4320,
+    students: 28000,
+    hours: 28,
+    image: 'https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=500',
+    category: 'data',
+    badge: 'Best Price',
+    level: 'Advanced',
+    date: '2026-01-25',
+    inCart: false
+  },
+  {
+    id: 11,
+    title: 'React 19 - The Complete Guide (2026 Edition)',
+    instructor: 'Maximilian Schwarzmüller',
+    price: 4490,
+    originalPrice: 16990,
+    rating: 4.9,
+    reviews: 15600,
+    students: 95000,
+    hours: 42,
+    image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=500',
+    category: 'development',
+    badge: 'Trending',
+    level: 'Intermediate',
+    date: '2026-02-20',
+    inCart: false
+  },
+  {
+    id: 12,
+    title: 'Cloud Computing with AWS (Solutions Architect)',
+    instructor: 'Stephane Maarek',
+    price: 5990,
+    originalPrice: 24990,
+    rating: 4.8,
+    reviews: 21300,
+    students: 145000,
+    hours: 55,
+    image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500',
+    category: 'development',
+    badge: 'Certification',
+    level: 'All Levels',
+    date: '2026-02-08',
+    inCart: false
+  },
+  {
+    id: 13,
+    title: 'DevOps Bootcamp: Docker, Kubernetes, Jenkins',
+    instructor: 'Mumshad Mannambeth',
+    price: 5290,
+    originalPrice: 19990,
+    rating: 4.8,
+    reviews: 12450,
+    students: 82000,
+    hours: 48,
+    image: 'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=500',
+    category: 'development',
+    badge: 'Popular',
+    level: 'Intermediate',
+    date: '2026-01-28',
+    inCart: false
+  },
+  {
+    id: 14,
+    title: 'Cybersecurity Fundamentals & Ethical Hacking',
+    instructor: 'Heather Myles',
+    price: 4990,
+    originalPrice: 18990,
+    rating: 4.7,
+    reviews: 9870,
+    students: 56000,
+    hours: 40,
+    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=500',
+    category: 'development',
+    badge: 'Hot & New',
+    level: 'Beginner',
+    date: '2026-02-18',
+    inCart: false
+  },
+  {
+    id: 15,
+    title: 'Flutter & Dart - Build Native Mobile Apps',
+    instructor: 'Angela Yu',
+    price: 4690,
+    originalPrice: 17990,
+    rating: 4.8,
+    reviews: 11200,
+    students: 73000,
+    hours: 38,
+    image: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=500',
+    category: 'development',
+    badge: 'Updated',
+    level: 'Beginner',
+    date: '2026-02-14',
+    inCart: false
+  },
+  {
+    id: 16,
+    title: 'TypeScript: The Complete Developer\'s Guide',
+    instructor: 'Stephen Grider',
+    price: 3990,
+    originalPrice: 14990,
+    rating: 4.9,
+    reviews: 8430,
+    students: 48000,
+    hours: 32,
+    image: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=500',
+    category: 'development',
+    badge: 'Top Rated',
+    level: 'Intermediate',
+    date: '2026-01-30',
+    inCart: false
+  },
+  {
+    id: 17,
+    title: 'MBA in a Box: Business Strategy & Leadership',
+    instructor: 'Chris Haroun',
+    price: 6490,
+    originalPrice: 29990,
+    rating: 4.8,
+    reviews: 15600,
+    students: 89000,
+    hours: 62,
+    image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=500',
+    category: 'business',
+    badge: 'Bestseller',
+    level: 'All Levels',
+    date: '2026-01-12',
+    inCart: false
+  },
+  {
+    id: 18,
+    title: 'Financial Accounting & Analysis for Managers',
+    instructor: 'Brian Bushee',
+    price: 4490,
+    originalPrice: 16990,
+    rating: 4.7,
+    reviews: 8760,
+    students: 52000,
+    hours: 35,
+    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=500',
+    category: 'business',
+    badge: 'Top Rated',
+    level: 'Beginner',
+    date: '2026-02-06',
+    inCart: false
+  },
+  {
+    id: 19,
+    title: 'Data Analytics for Business Professionals',
+    instructor: 'John Johnson',
+    price: 3990,
+    originalPrice: 15990,
+    rating: 4.6,
+    reviews: 6540,
+    students: 41000,
+    hours: 30,
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500',
+    category: 'business',
+    badge: 'Popular',
+    level: 'Intermediate',
+    date: '2026-01-22',
+    inCart: false
+  },
+  {
+    id: 20,
+    title: 'Leadership & People Management Certification',
+    instructor: 'Sheila Heen',
+    price: 5290,
+    originalPrice: 19990,
+    rating: 4.8,
+    reviews: 11200,
+    students: 68000,
+    hours: 28,
+    image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500',
+    category: 'business',
+    badge: 'Certification',
+    level: 'Intermediate',
+    date: '2026-02-09',
+    inCart: false
+  },
+  {
+    id: 21,
+    title: 'Sales & Negotiation Mastery',
+    instructor: 'Chris Voss',
+    price: 3790,
+    originalPrice: 14990,
+    rating: 4.9,
+    reviews: 9870,
+    students: 54000,
+    hours: 24,
+    image: 'https://images.unsplash.com/photo-1557426272-fc759fdf7a8d?w=500',
+    category: 'business',
+    badge: 'Trending',
+    level: 'All Levels',
+    date: '2026-02-16',
+    inCart: false
+  },
+  {
+    id: 22,
+    title: 'Blockchain & Cryptocurrency Fundamentals',
+    instructor: 'George Levy',
+    price: 4490,
+    originalPrice: 17990,
+    rating: 4.7,
+    reviews: 7650,
+    students: 47000,
+    hours: 36,
+    image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=500',
+    category: 'development',
+    badge: 'New',
+    level: 'Beginner',
+    date: '2026-02-11',
+    inCart: false
+  },
+  {
+    id: 23,
+    title: 'Power BI - Data Visualization & Dashboard Design',
+    instructor: 'Maven Analytics',
+    price: 3790,
+    originalPrice: 14990,
+    rating: 4.8,
+    reviews: 8930,
+    students: 51000,
+    hours: 28,
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500',
+    category: 'data',
+    badge: 'Best for Beginners',
+    level: 'Beginner',
+    date: '2026-02-03',
+    inCart: false
+  },
+  {
+    id: 24,
+    title: 'UX Research & Strategy: Design with Data',
+    instructor: 'Megan Smith',
+    price: 4290,
+    originalPrice: 16990,
+    rating: 4.8,
+    reviews: 5430,
+    students: 34000,
+    hours: 34,
+    image: 'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=500',
+    category: 'design',
+    badge: 'Popular',
+    level: 'Intermediate',
+    date: '2026-01-18',
+    inCart: false
+  },
+  {
+    id: 25,
+    title: 'SEO & Content Marketing Masterclass',
+    instructor: 'Brian Dean',
+    price: 3490,
+    originalPrice: 12990,
+    rating: 4.7,
+    reviews: 12300,
+    students: 76000,
+    hours: 26,
+    image: 'https://images.unsplash.com/photo-1432888622747-4eb9a8f2c293?w=500',
+    category: 'marketing',
+    badge: 'Trending',
+    level: 'All Levels',
+    date: '2026-02-07',
+    inCart: false
+  },
+  {
+    id: 26,
+    title: 'Product Management: From Idea to Launch',
+    instructor: 'Marty Cagan',
+    price: 4990,
+    originalPrice: 18990,
+    rating: 4.8,
+    reviews: 9870,
+    students: 59000,
+    hours: 40,
+    image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=500',
+    category: 'business',
+    badge: 'Top Rated',
+    level: 'Intermediate',
+    date: '2026-01-26',
+    inCart: false
+  }
 ])
-const chatScrollContainer = ref(null)
 
-// Form State
-const contactForm = ref({
-  first_name: '',
-  last_name: '',
-  email: '',
-  message: ''
+// Function to save cart to localStorage
+const saveCartToLocalStorage = () => {
+  const cartData = cartItems.value.map(item => item.id)
+  localStorage.setItem('savedCart', JSON.stringify(cartData))
+}
+
+// Function to load cart from localStorage
+const loadCartFromLocalStorage = () => {
+  const savedCart = localStorage.getItem('savedCart')
+  if (savedCart) {
+    const cartIds = JSON.parse(savedCart)
+    cartItems.value = featuredCourses.value.filter(course => cartIds.includes(course.id))
+    featuredCourses.value.forEach(course => {
+      course.inCart = cartIds.includes(course.id)
+    })
+  }
+}
+
+// Cart total
+const cartTotal = computed(() => {
+  return cartItems.value.reduce((total, item) => total + item.price, 0)
 })
 
+const cartCount = computed(() => cartItems.value.length)
 
-// Dynamic Hero Content
-const currentIndex = ref(0);
-const phrases = [
-  { main: "Master Your", highlight: "Future Craft." },
-  { main: "Elevate Your", highlight: "Digital Skills." },
-  { main: "Accelerate Your", highlight: "Dream Career." },
-  { main: "Design Your", highlight: "Success Story." }
-];
+// Add to cart
+const addToCart = (course) => {
+  if (!cartItems.value.find(item => item.id === course.id)) {
+    cartItems.value.push(course)
+    course.inCart = true
+    saveCartToLocalStorage()
+  }
+}
 
-const heroImages = [
-  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200",
-  "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=80&w=1200",
-  "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=1200",
-  "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&q=80&w=1200"
-];
+// Remove from cart
+const removeFromCart = (course) => {
+  const index = cartItems.value.findIndex(item => item.id === course.id)
+  if (index !== -1) {
+    cartItems.value.splice(index, 1)
+    course.inCart = false
+    saveCartToLocalStorage()
+  }
+}
 
-// --- CORE FUNCTIONS ---
+// Suggested courses
+const suggestedCourses = computed(() => {
+  return featuredCourses.value.filter(course => 
+    !cartItems.value.find(item => item.id === course.id)
+  ).slice(0, 4)
+})
 
+watch(cartItems, () => {
+  saveCartToLocalStorage()
+}, { deep: true })
+
+// Benefits
+const benefits = [
+  { icon: Globe, title: 'Global Community', description: 'Join 50M+ learners worldwide' },
+  { icon: Shield, title: 'Lifetime Access', description: 'Learn at your own pace' },
+  { icon: Headphones, title: '24/7 Support', description: 'Get help when you need it' },
+  { icon: Award, title: 'Certificates', description: 'Shareable credentials' }
+]
+
+// Stats
+const statsList = [
+  { value: '50M+', label: 'Learners', icon: Users },
+  { value: '5,000+', label: 'Courses', icon: BookOpen },
+  { value: '100+', label: 'Countries', icon: Globe },
+  { value: '85%', label: 'Career Growth', icon: TrendingUp }
+]
+
+// Computed filtered courses
+const filteredCourses = computed(() => {
+  let filtered = featuredCourses.value
+  if (selectedCategory.value !== 'all') {
+    filtered = filtered.filter(c => c.category === selectedCategory.value)
+  }
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(c => 
+      c.title.toLowerCase().includes(query) ||
+      c.instructor.toLowerCase().includes(query)
+    )
+  }
+  return filtered
+})
+
+// Sorted courses
+const sortedCourses = computed(() => {
+  const courses = [...filteredCourses.value]
+  switch (sortBy.value) {
+    case 'popular':
+      return courses.sort((a, b) => b.students - a.students)
+    case 'newest':
+      return courses.sort((a, b) => new Date(b.date) - new Date(a.date))
+    case 'highest-rated':
+      return courses.sort((a, b) => b.rating - a.rating)
+    case 'price-low':
+      return courses.sort((a, b) => a.price - b.price)
+    case 'price-high':
+      return courses.sort((a, b) => b.price - a.price)
+    default:
+      return courses
+  }
+})
+
+// Helper functions
+const formatNumber = (num) => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k'
+  return num.toString()
+}
+
+const formatPrice = (price) => {
+  return new Intl.NumberFormat('en-US').format(price) + ' ETB'
+}
+
+const getCategoryName = (id) => {
+  const category = categories.find(c => c.id === id)
+  return category ? category.name : 'Featured'
+}
+
+// Theme functions
 const toggleTheme = () => {
   isDarkMode.value = !isDarkMode.value
-  const html = document.documentElement
   if (isDarkMode.value) {
-    html.classList.add('dark')
+    document.documentElement.classList.add('dark')
     localStorage.setItem('theme', 'dark')
   } else {
-    html.classList.remove('dark')
+    document.documentElement.classList.remove('dark')
     localStorage.setItem('theme', 'light')
   }
-  isDarkMode.value = !isDarkMode.value
-  applyTheme(isDarkMode.value)
 }
 
 const initTheme = () => {
   const savedTheme = localStorage.getItem('theme')
   const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  
-  const shouldBeDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark)
-  
-  isDarkMode.value = shouldBeDark
-  applyTheme(shouldBeDark)
-}
-
-const updateScroll = () => {
-  isScrolled.value = window.scrollY > 20
-  const winScroll = document.documentElement.scrollTop
-  const height = document.documentElement.scrollHeight - document.documentElement.clientHeight
-  scrollProgress.value = (winScroll / height) * 100
-
-  const sections = ['home', 'categories', 'courses', 'features', 'contact']
-  for (const section of sections) {
-    const el = document.getElementById(section)
-    if (el) {
-      const rect = el.getBoundingClientRect()
-      if (rect.top <= 150 && rect.bottom >= 150) {
-        activeSection.value = section
-      }
-    }
+  if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+    isDarkMode.value = true
+    document.documentElement.classList.add('dark')
   }
 }
 
-const scrollTo = (id) => {
-  mobileMenuOpen.value = false
-  const el = document.getElementById(id)
-  if (el) {
-    const offset = 85 
-    const elementPosition = el.getBoundingClientRect().top + window.pageYOffset
-    const offsetPosition = elementPosition - offset
+// Scroll handler
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 50
+  
+  const h = document.documentElement;
+  const b = document.body;
+  const st = 'scrollTop';
+  const sh = 'scrollHeight';
+  const percent = (h[st] || b[st]) / ((h[sh] || b[sh]) - h.clientHeight) * 100;
+  scrollPercentage.value = percent;
+}
 
+// Scroll to section
+const scrollTo = (sectionId) => {
+  isMobileMenuOpen.value = false
+  
+  if (currentPage.value !== 'home') {
+    currentPage.value = 'home'
+    setTimeout(() => {
+      const element = document.getElementById(sectionId)
+      if (element) {
+        const offset = 80
+        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset
+        window.scrollTo({
+          top: elementPosition - offset,
+          behavior: 'smooth'
+        })
+      }
+    }, 100)
+    return
+  }
+  
+  const element = document.getElementById(sectionId)
+  if (element) {
+    const offset = 80
+    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset
     window.scrollTo({
-      top: offsetPosition,
+      top: elementPosition - offset,
       behavior: 'smooth'
     })
   }
 }
 
-// --- LIFECYCLE HOOKS ---
+const openCart = () => {
+  currentPage.value = 'cart'
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const closeCart = () => {
+  currentPage.value = 'home'
+}
+
 onMounted(() => {
-  // Theme Sync
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    isDarkMode.value = true
-    document.documentElement.classList.add('dark')
-  }
-
-  // Hero Carousel
-  const heroInterval = setInterval(() => {
-    currentIndex.value = (currentIndex.value + 1) % phrases.length;
-  }, 4000);
-
-  window.addEventListener('scroll', updateScroll)
-  setTimeout(() => isLoading.value = false, 1200)
-
-  // Cleanup interval on unmount implicitly handled if needed, 
-  // but better to store it:
-  onUnmounted(() => {
-    clearInterval(heroInterval)
-    window.removeEventListener('scroll', updateScroll)
-  })
+  initTheme()
+  window.addEventListener('scroll', handleScroll)
+  loadCartFromLocalStorage()
 })
 
-// --- DATA & COMPUTED ---
-const partners = ['Google', 'Meta', 'Netflix', 'Amazon', 'Microsoft', 'Adobe']
-const categories = [
-  { name: 'All', icon: '💎' },
-  { name: 'Development', icon: '💻' },
-  { name: 'Design', icon: '🎨' },
-  { name: 'Business', icon: '📈' },
-  { name: 'Marketing', icon: '🚀' },
-  { name: 'AI & Data', icon: '🧠' }
-]
-
-const allCourses = [
-  { id: 1, category: 'Development', title: 'Full-Stack Web Development 2026', author: 'Dr. Sarah Jenkins', price: 89.99, rating: 4.9, reviews: '2.4k', image: 'https://images.pexels.com/photos/1181244/pexels-photo-1181244.jpeg?auto=compress&cs=tinysrgb&w=600', tag: 'Bestseller', desc: 'Master the entire stack from database to deployment.' },
-  { id: 2, category: 'Design', title: 'Advanced UI/UX Design Systems', author: 'Marcus Rhoades', price: 74.99, rating: 4.8, reviews: '1.8k', image: 'https://images.pexels.com/photos/196644/pexels-photo-196644.jpeg?auto=compress&cs=tinysrgb&w=600', tag: 'New', desc: 'Build scalable design systems for modern enterprise apps.' },
-  { id: 3, category: 'AI & Data', title: 'AI & Machine Learning Masterclass', author: 'Prof. Alan Turing', price: 99.00, rating: 5.0, reviews: '950', image: 'https://images.pexels.com/photos/373543/pexels-photo-373543.jpeg?auto=compress&cs=tinysrgb&w=600', tag: 'Popular', desc: 'Dive deep into neural networks and predictive modeling.' },
-  { id: 4, category: 'Business', title: 'Mastering Startup Strategy', author: 'Elena Fisher', price: 59.99, rating: 4.7, reviews: '1.2k', image: 'https://images.pexels.com/photos/3183150/pexels-photo-3183150.jpeg?auto=compress&cs=tinysrgb&w=600', tag: 'Finance', desc: 'The blueprint for scaling your vision to a unicorn.' },
-  { id: 5, category: 'Marketing', title: 'Digital Growth Hacking 101', author: 'Gary V.', price: 45.00, rating: 4.6, reviews: '3.1k', image: 'https://images.pexels.com/photos/905163/pexels-photo-905163.jpeg?auto=compress&cs=tinysrgb&w=600', tag: 'Trending', desc: 'Unconventional strategies to explode your user base.' },
-  { id: 6, category: 'Design', title: 'Motion Graphics with After Effects', author: 'Kevin Slide', price: 65.00, rating: 4.9, reviews: '820', image: 'https://images.pexels.com/photos/251225/pexels-photo-251225.jpeg?auto=compress&cs=tinysrgb&w=600', tag: 'Creative', desc: 'Animate like a pro using industry-standard tools.' },
-]
-
-const filteredCourses = computed(() => {
-  let filtered = allCourses
-  if (selectedCategory.value !== 'All') {
-    filtered = filtered.filter(c => c.category === selectedCategory.value)
-  }
-  if (searchQuery.value) {
-    filtered = filtered.filter(c => c.title.toLowerCase().includes(searchQuery.value.toLowerCase()))
-  }
-  return filtered.filter(c => c.price <= maxPrice.value)
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
-
-// --- EVENT HANDLERS ---
-const addToCart = (e) => {
-  e.stopPropagation()
-  cartCount.value++
-}
-
-const handleContact = () => {
-  isSubmitting.value = true
-  setTimeout(() => {
-    isSubmitting.value = false
-    isSubmitted.value = true
-    contactForm.value = { first_name: '', last_name: '', email: '', message: '' }
-    setTimeout(() => isSubmitted.value = false, 5000)
-  }, 1500)
-}
-
-const sendMessage = async () => {
-  if (!chatInput.value.trim()) return
-  const userMsg = chatInput.value
-  chatMessages.value.push({ role: 'user', content: userMsg })
-  chatInput.value = ''
-  isTyping.value = true
-  await nextTick()
-  chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight
-
-  setTimeout(async () => {
-    let reply = "That's a great choice! We have several experts in that field."
-    if(userMsg.toLowerCase().match(/price|cheap|cost/)) {
-        reply = "Looking for a deal? Our Marketing courses start as low as $45.00!"
-    } else if (userMsg.toLowerCase().includes('design')) {
-        reply = "Our Design catalog is elite. I highly recommend 'Advanced UI/UX Design Systems'."
-    }
-    chatMessages.value.push({ role: 'assistant', content: reply })
-    isTyping.value = false
-    await nextTick()
-    chatScrollContainer.value.scrollTop = chatScrollContainer.value.scrollHeight
-  }, 1500)
-}
 </script>
+
 <template>
-  <Head title="LearnHub | Elite Learning Platform" />
+  <div :class="{ 'dark': isDarkMode }" class="min-h-screen bg-white dark:bg-slate-900">
+    <!-- Progress Bar -->
+    <div class="fixed top-0 left-0 h-1 bg-blue-600 z-50 transition-all duration-150" 
+         :style="{ width: scrollPercentage + '%' }"></div>
 
-  <!-- Progress Bar -->
-  <div class="fixed top-0 left-0 h-1 bg-blue-600 z-[120] transition-all duration-150" :style="{ width: scrollProgress + '%' }"></div>
-
-  <!-- Theme Toggle Button -->
-  <button @click="toggleTheme" class="fixed bottom-6 left-6 z-[150] w-14 h-14 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl flex items-center justify-center text-xl hover:rotate-12 transition-all border border-slate-100 dark:border-slate-700">
-    <span v-if="isDarkMode">☀️</span>
-    <span v-else>🌙</span>
-  </button>
-
-  <!-- AI Chatbot -->
-  <div class="fixed bottom-6 right-6 z-[150] flex flex-col items-end">
-    <transition name="list">
-      <div v-if="isChatOpen" class="w-80 sm:w-96 h-[550px] bg-white dark:bg-slate-900 shadow-2xl rounded-[2.5rem] border border-slate-100 dark:border-slate-800 mb-4 flex flex-col overflow-hidden">
-        <div class="p-6 bg-blue-600 text-white flex justify-between items-center">
-          <div class="flex items-center space-x-3">
-            <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-xl">🤖</div>
-            <div>
-                <p class="font-black text-xs uppercase tracking-widest leading-none">LearnHub AI</p>
-                <p class="text-[10px] opacity-70">Always Online</p>
-            </div>
-          </div>
-          <button @click="isChatOpen = false" class="hover:rotate-90 transition-transform">✕</button>
-        </div>
-        
-        <div ref="chatScrollContainer" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50/50 dark:bg-slate-950/50">
-          <div v-for="(msg, idx) in chatMessages" :key="idx" 
-               :class="['max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm', msg.role === 'user' ? 'bg-blue-600 text-white ml-auto rounded-tr-none' : 'bg-white dark:bg-slate-800 dark:text-slate-200 mr-auto rounded-tl-none border border-slate-100 dark:border-slate-700']">
-            {{ msg.content }}
-          </div>
-          <div v-if="isTyping" class="bg-white dark:bg-slate-800 p-4 rounded-2xl w-16 flex space-x-1 shadow-sm border border-slate-100 dark:border-slate-700">
-             <span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce"></span>
-             <span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-             <span class="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-          </div>
-        </div>
-
-        <div class="p-4 border-t dark:border-slate-800 bg-white dark:bg-slate-900">
-          <form @submit.prevent="sendMessage" class="relative">
-            <input v-model="chatInput" placeholder="Ask about prices or categories..." class="w-full pl-4 pr-12 py-4 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl text-sm focus:ring-2 focus:ring-blue-600 dark:text-white" />
-            <button type="submit" class="absolute right-2 top-2 w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:scale-105 transition-transform">↑</button>
-          </form>
-        </div>
-      </div>
-    </transition>
-
-    <button @click="isChatOpen = !isChatOpen" class="w-16 h-16 bg-blue-600 text-white shadow-2xl rounded-2xl flex items-center justify-center text-2xl hover:scale-110 transition-all hover:rotate-12">
-      <span v-if="!isChatOpen">💬</span>
-      <span v-else>✕</span>
+    <!-- Theme Toggle -->
+    <button @click="toggleTheme" class="fixed bottom-6 right-6 z-50 w-12 h-12 bg-white dark:bg-slate-800 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-all duration-300 border border-slate-200 dark:border-slate-700">
+      <Sun v-if="isDarkMode" class="w-5 h-5 text-yellow-500" />
+      <Moon v-else class="w-5 h-5 text-blue-600" />
     </button>
-  </div>
 
-  <!-- Course Modal -->
-  <div v-if="selectedCourse" class="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
-    <div @click="selectedCourse = null" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
-    <div class="bg-white dark:bg-slate-900 w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl relative animate-in zoom-in duration-300">
-      <button @click="selectedCourse = null" class="absolute top-6 right-6 w-10 h-10 bg-white dark:bg-slate-800 rounded-full shadow-lg flex items-center justify-center font-bold z-10 hover:bg-red-50 hover:text-red-500 transition-colors">✕</button>
-      <div class="flex flex-col md:flex-row">
-        <img :src="selectedCourse.image" class="w-full md:w-1/2 h-64 md:h-auto object-cover" />
-        <div class="p-8 md:p-12 flex flex-col justify-center">
-          <span class="text-blue-600 font-black text-xs uppercase tracking-widest mb-2">{{ selectedCourse.category }}</span>
-          <h2 class="text-3xl font-black mb-4 leading-tight dark:text-white">{{ selectedCourse.title }}</h2>
-          <p class="text-slate-500 mb-8">{{ selectedCourse.desc }}</p>
-          <div class="flex items-center justify-between mt-auto">
-            <span class="text-4xl font-black dark:text-white">${{ selectedCourse.price }}</span>
-            <button @click="addToCart" class="px-8 py-4 bg-blue-600 text-white font-black rounded-2xl hover:bg-slate-900 transition-all">Enroll Now</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <!-- Mobile Menu Button -->
+    <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="lg:hidden fixed top-5 right-4 z-50 w-11 h-11 bg-white dark:bg-slate-800 rounded-xl shadow-lg flex items-center justify-center border border-slate-200 dark:border-slate-700">
+      <Menu v-if="!isMobileMenuOpen" class="w-5 h-5 text-blue-600" />
+      <X v-else class="w-5 h-5 text-blue-600" />
+    </button>
 
-  <!-- Main Content -->
-  <div class="min-h-screen bg-[#FDFDFF] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-600 selection:text-white overflow-x-hidden">
-    
     <!-- Header -->
-    <header :class="['fixed top-0 left-0 right-0 z-[100] transition-all duration-500', isScrolled ? 'bg-white/90 dark:bg-slate-950/90 backdrop-blur-md py-3 shadow-sm border-b dark:border-slate-800' : 'bg-transparent py-6 border-transparent']">
-      <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        <div class="flex items-center space-x-10">
-          <button @click="scrollTo('home')" class="flex items-center space-x-2 group">
-            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-200 group-hover:rotate-12 transition-transform duration-300">L</div>
-            <span class="text-2xl font-black tracking-tighter">Learn<span class="text-blue-600">Hub</span></span>
+    <header :class="[
+      'fixed top-0 left-0 right-0 z-40 transition-all duration-500',
+      isScrolled ? 'bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-md py-3' : 'bg-white dark:bg-slate-900 py-5 border-b border-slate-100 dark:border-slate-800'
+    ]">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between">
+          <!-- Logo -->
+          <button @click="scrollTo('home')" class="flex items-center space-x-2 group shrink-0">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-md group-hover:scale-105 transition-transform duration-300">
+              L
+            </div>
+            <span class="text-2xl font-black tracking-tighter text-slate-800 dark:text-white">Learn<span class="text-blue-600">Hub</span></span>
           </button>
 
-          <div class="hidden lg:flex items-center space-x-1">
-            <button v-for="item in ['Home', 'Categories', 'Courses', 'Features', 'Contact']" :key="item" 
-              @click="scrollTo(item.toLowerCase())"
-              :class="[activeSection === item.toLowerCase() ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'text-slate-600 dark:text-slate-400']"
-              class="px-4 py-2 text-sm font-bold hover:text-blue-600 rounded-full hover:bg-blue-50 transition-all duration-300">
-              {{ item }}
+          <!-- Desktop Navigation -->
+          <div class="hidden lg:flex items-center space-x-8">
+            <button v-for="item in navItems" :key="item.name"
+              @click="scrollTo(item.id)"
+              class="text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">
+              {{ item.name }}
+            </button>
+          </div>
+
+          <!-- Right side - Search, Cart, Auth -->
+          <div class="hidden lg:flex items-center space-x-6">
+            <!-- Search Bar -->
+            <div class="relative">
+              <input 
+                v-model="searchQuery"
+                type="text" 
+                placeholder="Search courses..." 
+                class="w-64 px-5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white"
+              />
+              <Search class="absolute right-4 top-2.5 w-5 h-5 text-slate-400" />
+            </div>
+
+            <!-- Cart Button -->
+            <button @click="openCart" class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <ShoppingCart class="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              <span v-if="cartCount > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                {{ cartCount }}
+              </span>
+            </button>
+            
+            <!-- Auth Buttons - Log In and Sign Up next to cart -->
+            <!-- In the header auth buttons -->
+            <div class="flex items-center space-x-3">
+           <Link :href="route('login')" class="px-5 py-2 text-slate-600 dark:text-slate-300 font-medium hover:text-blue-600 transition-colors">
+                 Log In
+             </Link>
+            <Link :href="route('register')" class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
+            Sign Up
+           </Link>
+             </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div v-if="isMobileMenuOpen" class="fixed inset-0 z-30 lg:hidden">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="isMobileMenuOpen = false"></div>
+      <div class="absolute top-0 right-0 w-80 h-full bg-white dark:bg-slate-900 shadow-2xl p-6 pt-24">
+        <div class="space-y-4">
+          <button v-for="item in navItems" :key="item.name"
+            @click="scrollTo(item.id)"
+            class="block w-full text-left py-3 px-4 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+            {{ item.name }}
+          </button>
+          <div class="pt-4 space-y-3 border-t border-slate-200 dark:border-slate-700">
+            <button class="block w-full text-center py-3 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700 rounded-xl">
+              Log In
+            </button>
+            <button class="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl">
+              Sign Up Free
             </button>
           </div>
         </div>
-
-        <div class="flex items-center space-x-4">
-          <div class="hidden md:flex relative group">
-            <input v-model="searchQuery" @keyup.enter="triggerSearch" type="text" placeholder="Search courses..." class="pl-10 pr-12 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-full text-sm focus:ring-2 focus:ring-blue-600 w-48 lg:w-64 focus:w-80 transition-all duration-500 dark:text-white" />
-            <span class="absolute left-4 top-2.5 text-slate-400">🔍</span>
-          </div>
-
-          <button class="relative p-2 text-slate-600 dark:text-slate-300 hover:text-blue-600 transition-transform active:scale-90">
-            <span class="text-xl">🛒</span>
-            <span v-if="cartCount > 0" class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-bounce">{{ cartCount }}</span>
-          </button>
-
-          <div class="hidden sm:flex items-center space-x-3">
-<template v-if="user">
-    <Link 
-      :href="dashboardRoute" 
-      class="text-sm font-bold px-4 hover:text-blue-600 transition-colors"
-    >
-      Dashboard
-    </Link>
-  </template>
-
-  <template v-else>
-    <Link 
-      v-if="canLogin" 
-      :href="route('login')" 
-      class="text-sm font-bold px-4 hover:text-blue-600 transition-colors"
-    >
-      Log In
-    </Link>
-    
-    <Link 
-      v-if="canRegister" 
-      :href="route('register')" 
-      class="px-6 py-2.5 bg-slate-900 dark:bg-blue-600 text-white text-sm font-bold rounded-full hover:bg-blue-600 shadow-xl transition-all hover:-translate-y-1"
-    >
-      Join Free
-    </Link>
-  </template>
-          </div>
-
-          <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden p-2 text-2xl" :class="{'rotate-90': mobileMenuOpen}">
-            {{ mobileMenuOpen ? '✕' : '☰' }}
-          </button>
-        </div>
-      </nav>
-    </header>
-
-    <!-- Partners Bar -->
-    <div class="bg-white dark:bg-slate-950 py-4 border-b border-slate-50 dark:border-slate-900 mt-24">
-        <div class="max-w-7xl mx-auto px-6 overflow-hidden relative">
-            <div class="flex space-x-12 whitespace-nowrap animate-marquee items-center opacity-30 dark:invert">
-                <span v-for="brand in [...partners, ...partners]" :key="brand" class="text-2xl font-black grayscale">{{ brand }}</span>
-            </div>
-        </div>
+      </div>
     </div>
-
+    
     <main>
-      <!-- Hero Section -->
-      <section id="home" class="pt-24 pb-32 px-6 relative overflow-hidden min-h-[90vh] flex items-center">
-        <div class="absolute top-0 left-1/4 w-[600px] h-[600px] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[120px] -z-10 animate-pulse"></div>
-        <div class="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-400/10 dark:bg-purple-600/5 rounded-full blur-[100px] -z-10"></div>
+      <!-- Cart Page -->
+      <div v-if="currentPage === 'cart'" class="pt-32 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div class="flex items-center justify-between mb-8">
+          <div>
+            <button @click="closeCart" class="text-blue-600 hover:text-blue-700 flex items-center space-x-2 mb-4">
+              
+            </button>
+            <h1 class="text-3xl font-black text-slate-800 dark:text-white">Course Cart</h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-1">{{ cartCount }} {{ cartCount === 1 ? 'course' : 'courses' }} in cart</p>
+          </div>
+        </div>
 
-        <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-          
-          <div class="z-10 text-center lg:text-left space-y-8">
-            <div class="inline-flex items-center space-x-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-transform hover:scale-105">
-              <span class="flex h-3 w-3 rounded-full bg-blue-600 animate-ping"></span>
-              <span class="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.2em]">Live Learning 2026 Edition</span>
+        <div>
+          <div class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2">
+              <div v-if="cartCount === 0" class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-12 text-center">
+                <ShoppingCart class="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Your cart is empty</h3>
+                <p class="text-slate-500 mb-6">Looks like you haven't added any courses yet</p>
+                <button @click="closeCart" class="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">Browse Courses</button>
+              </div>
+              
+              <div v-else class="space-y-4">
+                <div v-for="course in cartItems" :key="course.id" class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row gap-4">
+                  <img :src="course.image" class="w-full sm:w-32 h-32 object-cover rounded-xl" />
+                  <div class="flex-1">
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <h3 class="font-bold text-lg dark:text-white">{{ course.title }}</h3>
+                        <p class="text-sm text-slate-500">{{ course.instructor }}</p>
+                        <div class="flex items-center space-x-3 mt-2">
+                          <span class="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 px-2 py-1 rounded">{{ course.badge }}</span>
+                          <div class="flex items-center space-x-1">
+                            <Star class="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                            <span class="text-sm">{{ course.rating }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-xl font-black text-blue-600">{{ formatPrice(course.price) }}</div>
+                        <div class="text-sm text-slate-400 line-through">{{ formatPrice(course.originalPrice) }}</div>
+                      </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-700">
+                      <button @click="removeFromCart(course)" class="text-red-500 hover:text-red-600 text-sm flex items-center space-x-1">
+                        <Trash2 class="w-4 h-4" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div class="h-[180px] md:h-[280px] flex flex-col justify-center">
-              <transition name="hero-fade" mode="out-in">
-                <h1 :key="currentIndex" class="text-7xl md:text-9xl font-black tracking-tighter leading-[0.85] dark:text-white">
-                  {{ phrases[currentIndex].main }} <br/>
-                  <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-400">
-                    {{ phrases[currentIndex].highlight }}
-                  </span>
-                </h1>
-              </transition>
+            <div v-if="cartCount > 0" class="lg:col-span-1">
+              <div class="bg-slate-50 dark:bg-slate-800 rounded-2xl p-6 sticky top-32">
+                <h3 class="text-xl font-bold dark:text-white mb-4">Order Summary</h3>
+                <div class="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Subtotal ({{ cartCount }} items)</span>
+                    <span class="dark:text-white">{{ formatPrice(cartTotal) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Discount</span>
+                    <span class="text-green-600">- {{ formatPrice(0) }}</span>
+                  </div>
+                </div>
+                <div class="flex justify-between pt-4 mb-6">
+                  <span class="font-bold dark:text-white">Total</span>
+                  <span class="text-2xl font-black text-blue-600">{{ formatPrice(cartTotal) }}</span>
+                </div>
+                <button class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center space-x-2">
+                  <!-- In the cart page, replace the Proceed to Checkout button -->
+<Link 
+  :href="route('checkout.index')" 
+  class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center space-x-2"
+>
+  <CreditCard class="w-4 h-4" />
+  <span>Proceed to Checkout</span>
+</Link>
+                </button>
+                <div class="flex items-center justify-center space-x-4 mt-4 text-xs text-slate-400">
+                  <span class="flex items-center space-x-1"><Shield class="w-3 h-3" /> Secure Payment</span>
+                  <span class="flex items-center space-x-1"><Truck class="w-3 h-3" /> Lifetime Access</span>
+                </div>
+              </div>
             </div>
+          </div>
 
-            <p class="text-xl text-slate-500 dark:text-slate-400 max-w-lg mx-auto lg:mx-0 leading-relaxed font-medium">
-              Don't just learn. Evolve. Access <span class="text-slate-900 dark:text-white font-bold">1,200+ elite certifications</span> taught by global industry pioneers.
-            </p>
-
-            <div class="flex flex-col sm:flex-row justify-center lg:justify-start gap-6 items-center">
-              <button @click="scrollTo('courses')" class="group relative px-10 py-5 bg-blue-600 text-white font-black rounded-2xl overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-500/30">
-                <span class="relative z-10">Explore All Courses</span>
-                <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 group-hover:opacity-0 transition-opacity"></div>
-              </button>
-
-              <div class="flex -space-x-4 items-center group cursor-pointer">
-                <img v-for="i in 4" :key="i" :src="`https://picsum.photos/seed/${i+20}/100/100`" class="w-14 h-14 rounded-2xl border-4 border-white dark:border-slate-950 object-cover rotate-3 group-hover:rotate-0 transition-all duration-500" />
-                <div class="pl-8 text-left">
-                  <p class="text-sm font-black dark:text-white">Join 50k+ Students</p>
-                  <div class="flex text-amber-400 text-xs mt-1">
-                    <span v-for="s in 5" :key="s">★</span>
+          <div class="mt-16">
+            <h2 class="text-2xl font-bold dark:text-white mb-6">You might also like</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div v-for="course in suggestedCourses" :key="course.id" class="bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700">
+                <img :src="course.image" class="w-full h-36 object-cover" />
+                <div class="p-3">
+                  <h4 class="font-semibold text-sm dark:text-white line-clamp-2">{{ course.title }}</h4>
+                  <p class="text-xs text-slate-500 mt-1">{{ course.instructor }}</p>
+                  <div class="flex items-center justify-between mt-2">
+                    <span class="text-sm font-bold text-blue-600">{{ formatPrice(course.price) }}</span>
+                    <button @click="addToCart(course)" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700">Add to Cart</button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-
-          <div class="relative group">
-            <div class="relative z-10 rounded-[4rem] overflow-hidden aspect-[4/5] border-[12px] border-white dark:border-slate-900 shadow-2xl transition-transform duration-700 group-hover:scale-[1.01]">
-              <transition name="hero-fade" mode="out-in">
-                <img :key="currentIndex" :src="heroImages[currentIndex]" class="w-full h-full object-cover" alt="Learning Platform" />
-              </transition>
-              <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent opacity-60"></div>
-            </div>
-
-            <div class="absolute -top-10 -right-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-slate-700 z-20 animate-float">
-              <div class="flex items-center space-x-4">
-                <div class="w-14 h-14 bg-blue-100 dark:bg-blue-900/50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl">🚀</div>
-                <div>
-                  <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none mb-1">Growth</p>
-                  <p class="font-black text-xl dark:text-white">+145% Salary</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="absolute -bottom-10 -left-10 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-white/50 dark:border-slate-700 z-20 animate-float-delayed">
-              <div class="flex items-center space-x-4">
-                <div class="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 rounded-2xl flex items-center justify-center text-2xl">✔</div>
-                <div>
-                  <p class="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mb-1">Verified</p>
-                  <p class="font-black text-xl dark:text-white">Expert Tutors</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Categories Section -->
-      <section id="categories" class="py-20 bg-white dark:bg-slate-950">
-        <div class="max-w-7xl mx-auto px-6 text-center">
-            <h2 class="text-4xl font-black mb-12 dark:text-white">Explore by <span class="text-blue-600">Category</span></h2>
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                <button v-for="cat in categories" :key="cat.name" 
-                    @click="selectedCategory = cat.name; scrollTo('courses')"
-                    :class="selectedCategory === cat.name ? 'bg-blue-600 text-white scale-105 shadow-xl' : 'bg-slate-50 dark:bg-slate-900 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-800'"
-                    class="p-8 rounded-[2rem] transition-all duration-300 group">
-                    <span class="text-4xl block mb-4 group-hover:scale-125 transition-transform">{{ cat.icon }}</span>
-                    <p class="font-black text-sm uppercase tracking-widest">{{ cat.name }}</p>
-                </button>
-            </div>
-        </div>
-      </section>
-
-      <!-- Courses Section -->
-      <section id="courses" class="py-24 bg-slate-50 dark:bg-slate-900/50 scroll-mt-20">
-        <div class="max-w-7xl mx-auto px-6">
-          <div class="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-8">
-            <div>
-                <h2 class="text-4xl font-black dark:text-white mb-2">{{ selectedCategory }} Courses</h2>
-                <p class="text-slate-500 text-sm">Showing {{ filteredCourses.length }} elite programs</p>
-            </div>
-            
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-[2rem] shadow-sm border dark:border-slate-700 min-w-[300px]">
-                <div class="flex justify-between mb-2">
-                    <span class="text-xs font-black uppercase dark:text-slate-400">Max Price</span>
-                    <span class="text-sm font-black text-blue-600">${{ maxPrice }}</span>
+      <!-- Home Page Content -->
+      <div v-if="currentPage === 'home'">
+        <!-- Hero Section -->
+        <section id="home" class="relative min-h-[90vh] flex items-center overflow-hidden pt-20">
+          <div class="absolute inset-0 bg-gradient-to-br from-blue-50 to-white dark:from-slate-800 dark:to-slate-900 -z-10"></div>
+          <div class="absolute top-20 right-0 w-96 h-96 bg-blue-200 rounded-full filter blur-3xl opacity-30 -z-10"></div>
+          <div class="absolute bottom-20 left-0 w-80 h-80 bg-blue-300 rounded-full filter blur-3xl opacity-20 -z-10"></div>
+          
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+              <div class="text-center lg:text-left">
+                <div class="inline-flex items-center space-x-2 bg-blue-100 dark:bg-blue-900/30 px-4 py-2 rounded-full mb-6">
+                  <Zap class="w-4 h-4 text-blue-600" />
+                  <span class="text-sm font-semibold text-blue-600">Powering the future of learning</span>
                 </div>
-                <input type="range" v-model="maxPrice" min="40" max="100" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" />
-            </div>
-          </div>
-
-          <div v-if="isLoading" class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <div v-for="i in 3" :key="i" class="bg-white dark:bg-slate-800 rounded-[2.5rem] h-96 animate-pulse p-8">
-                <div class="bg-slate-200 dark:bg-slate-700 h-48 rounded-[2rem] mb-6"></div>
-                <div class="bg-slate-200 dark:bg-slate-700 h-6 w-3/4 rounded mb-4"></div>
-                <div class="bg-slate-200 dark:bg-slate-700 h-6 w-1/2 rounded"></div>
-            </div>
-          </div>
-
-          <transition-group v-else name="list" tag="div" class="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <div v-for="course in filteredCourses" :key="course.id" @click="selectedCourse = course" class="bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-[0_20px_50px_rgba(8,112,184,0.1)] transition-all duration-500 group cursor-pointer">
-              <div class="relative h-64 overflow-hidden">
-                <img :src="course.image" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
-                <div class="absolute top-6 left-6 bg-white/95 backdrop-blur px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm">{{ course.tag }}</div>
-              </div>
-              <div class="p-8">
-                <div class="flex items-center justify-between mb-4">
-                  <span class="text-blue-600 font-black text-[10px] uppercase tracking-widest">{{ course.category }}</span>
-                  <div class="flex items-center text-yellow-400 text-sm">★ <span class="text-slate-900 dark:text-slate-200 ml-1 font-bold">{{ course.rating }}</span></div>
+                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-800 dark:text-white leading-tight">
+                  Learn Without<br />
+                  <span class="text-blue-600">Limits</span>
+                </h1>
+                <p class="text-lg text-slate-500 dark:text-slate-400 mt-6 max-w-lg mx-auto lg:mx-0">
+                  Start, switch, or advance your career with 5,000+ courses taught by expert instructors.
+                </p>
+                
+                <div class="relative mt-8 max-w-lg mx-auto lg:mx-0">
+                  <input 
+                    v-model="searchQuery"
+                    type="text" 
+                    placeholder="What do you want to learn?" 
+                    class="w-full px-6 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-800 dark:text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button class="absolute right-2 top-2 px-6 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all">
+                    Search
+                  </button>
                 </div>
-                <h3 class="text-xl font-black mb-2 leading-tight group-hover:text-blue-600 transition-colors dark:text-white">{{ course.title }}</h3>
-                <p class="text-slate-400 text-sm mb-8">Prof. {{ course.author }}</p>
-                <div class="flex items-center justify-between pt-6 border-t border-slate-50 dark:border-slate-700">
-                  <span class="text-3xl font-black dark:text-white">${{ course.price }}</span>
-                  <button @click="addToCart" class="w-12 h-12 bg-slate-900 dark:bg-blue-600 text-white rounded-2xl flex items-center justify-center hover:bg-blue-600 hover:-rotate-12 transition-all">＋</button>
+
+                <div class="mt-8 flex flex-wrap items-center justify-center lg:justify-start gap-4 text-sm text-slate-500">
+                  <span>Trusted by:</span>
+                  <div class="flex space-x-6">
+                    <span class="font-bold text-slate-700 dark:text-slate-300">Google</span>
+                    <span class="font-bold text-slate-700 dark:text-slate-300">Microsoft</span>
+                    <span class="font-bold text-slate-700 dark:text-slate-300">Amazon</span>
+                    <span class="font-bold text-slate-700 dark:text-slate-300">Netflix</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </transition-group>
-        </div>
-      </section>
-
-      <!-- Features Section -->
-      <section id="features" class="py-24 bg-white dark:bg-slate-950 scroll-mt-20 overflow-hidden">
-        <div class="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-20 items-center">
-          <div class="grid grid-cols-2 gap-6 relative">
-            <div class="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-100 dark:bg-blue-600/20 blur-[100px] opacity-50"></div>
-            <div class="p-8 bg-blue-50/50 dark:bg-blue-900/10 backdrop-blur rounded-[2.5rem] mt-10 border border-blue-100 dark:border-blue-800">
-              <span class="text-4xl block mb-4">📱</span>
-              <h4 class="font-black mb-2 dark:text-white">Mobile Ready</h4>
-              <p class="text-xs text-slate-500">Learn on the go with our top-rated apps.</p>
-            </div>
-            <div class="p-8 bg-purple-50/50 dark:bg-purple-900/10 backdrop-blur rounded-[2.5rem] border border-purple-100 dark:border-purple-800">
-              <span class="text-4xl block mb-4">♾️</span>
-              <h4 class="font-black mb-2 dark:text-white">Lifetime Access</h4>
-              <p class="text-xs text-slate-500">Buy once, enjoy updates forever.</p>
-            </div>
-             <div class="p-8 bg-emerald-50/50 dark:bg-emerald-900/10 backdrop-blur rounded-[2.5rem] mt-10 border border-emerald-100 dark:border-emerald-800">
-              <span class="text-4xl block mb-4">📜</span>
-              <h4 class="font-black mb-2 dark:text-white">Certifications</h4>
-              <p class="text-xs text-slate-500">Earn recognized certificates.</p>
-            </div>
-            <div class="p-8 bg-orange-50/50 dark:bg-orange-900/10 backdrop-blur rounded-[2.5rem] border border-orange-100 dark:border-orange-800">
-              <span class="text-4xl block mb-4">👥</span>
-              <h4 class="font-black mb-2 dark:text-white">Community</h4>
-              <p class="text-xs text-slate-500">Join 24/7 student forums.</p>
-            </div>
-          </div>
-          <div>
-            <h2 class="text-5xl font-black mb-8 leading-tight dark:text-white">Beyond just <span class="text-blue-600">Video.</span></h2>
-            <p class="text-slate-500 mb-8 leading-relaxed text-lg">We provide a complete ecosystem designed for mastery.</p>
-            <ul class="space-y-5">
-              <li v-for="text in ['Downloadable Resources', 'Interactive Live Quizzes', '1-on-1 Mentor Support']" :key="text" class="flex items-center space-x-4 group">
-                <span class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 flex items-center justify-center font-bold">✓</span>
-                <span class="font-bold text-slate-700 dark:text-slate-300">{{ text }}</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <!-- Contact Section -->
-      <section id="contact" class="py-24 max-w-7xl mx-auto px-6 scroll-mt-20">
-        <div class="bg-slate-900 rounded-[4rem] overflow-hidden flex flex-col lg:flex-row shadow-2xl">
-          <div class="lg:w-1/2 p-12 lg:p-20 text-white">
-            <h2 class="text-4xl lg:text-5xl font-black mb-6">Let's build your <span class="text-blue-500">future</span>.</h2>
-            <p class="text-slate-400 mb-12">Support team is available 24/7. Connect with us on social media for daily updates.</p>
-            
-            <div class="grid grid-cols-2 gap-4 mb-12">
-                <a v-for="social in socialLinks" :key="social.name" :href="social.url" 
-                   class="flex items-center space-x-4 p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all group">
-                    <div :class="['w-10 h-10 rounded-xl flex items-center justify-center text-xl shadow-lg', social.color]">
-                        {{ social.icon }}
-                    </div>
-                    <span class="font-bold text-sm">{{ social.name }}</span>
-                </a>
-            </div>
-
-            <div class="space-y-8">
-              <div class="flex items-center space-x-6 group">
-                <div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-blue-600 transition-colors">📧</div>
-                <div><p class="text-xs text-slate-500 font-bold uppercase">Email Us</p><p class="font-bold text-lg">support@learnhub.com</p></div>
+              
+              <div class="hidden lg:block relative">
+                <div class="relative rounded-2xl overflow-hidden shadow-2xl">
+                  <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600" class="w-full h-auto rounded-2xl" />
+                  <div class="absolute inset-0 bg-gradient-to-t from-blue-600/20 to-transparent"></div>
+                </div>
+                <div class="absolute -bottom-6 -left-6 bg-white dark:bg-slate-800 rounded-xl shadow-lg p-4 flex items-center space-x-3">
+                  <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Users class="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <div class="font-bold text-slate-800 dark:text-white">50M+ Learners</div>
+                    <div class="text-sm text-slate-500">Join our community</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="lg:w-1/2 bg-white dark:bg-slate-800 m-4 lg:m-8 rounded-[3rem] p-10 lg:p-16 flex flex-col justify-center">
-            <form v-if="!isSubmitted" @submit.prevent="handleContact" class="space-y-4">
-              <div class="grid md:grid-cols-2 gap-4">
-                <input v-model="contactForm.first_name" required type="text" placeholder="First Name" class="w-full p-5 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl dark:text-white shadow-inner" />
-                <input v-model="contactForm.last_name" required type="text" placeholder="Last Name" class="w-full p-5 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl dark:text-white shadow-inner" />
+        </section>
+
+        <!-- Stats Section -->
+        <section class="py-16 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div v-for="stat in statsList" :key="stat.label" class="text-center">
+                <component :is="stat.icon" class="w-8 h-8 text-blue-600 mx-auto mb-3" />
+                <div class="text-3xl font-black dark:text-white">{{ stat.value }}</div>
+                <div class="text-sm text-slate-500">{{ stat.label }}</div>
               </div>
-              <input v-model="contactForm.email" required type="email" placeholder="Email" class="w-full p-5 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl dark:text-white shadow-inner" />
-              <textarea v-model="contactForm.message" required rows="4" placeholder="How can we help?" class="w-full p-5 bg-slate-50 dark:bg-slate-900 border-none rounded-2xl dark:text-white shadow-inner resize-none"></textarea>
-              <button :disabled="isSubmitting" class="w-full py-6 bg-blue-600 text-white font-black rounded-2xl shadow-xl hover:bg-slate-900 transition-all uppercase text-xs tracking-[0.2em] disabled:opacity-50">
-                {{ isSubmitting ? 'Sending...' : 'Send Message' }}
+            </div>
+          </div>
+        </section>
+
+        <!-- Categories Section -->
+        <section id="categories" class="py-20 bg-slate-50 dark:bg-slate-800/30">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+              <h2 class="text-3xl sm:text-4xl font-black dark:text-white">Browse <span class="text-blue-600">Top Categories</span></h2>
+              <p class="text-slate-500 dark:text-slate-400 mt-4">Choose from 5,000+ courses taught by expert instructors</p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <button v-for="cat in categories" :key="cat.id"
+                @click="selectedCategory = cat.id"
+                :class="[
+                  'p-6 rounded-2xl text-center transition-all duration-300',
+                  selectedCategory === cat.id 
+                    ? 'bg-blue-600 text-white shadow-md scale-105' 
+                    : 'bg-white dark:bg-slate-900 hover:shadow-md dark:hover:bg-slate-800 border border-slate-100 dark:border-slate-700'
+                ]">
+                <component :is="cat.icon" class="w-8 h-8 mx-auto mb-3" :class="selectedCategory === cat.id ? 'text-white' : 'text-blue-600'" />
+                <span class="font-semibold text-sm">{{ cat.name }}</span>
               </button>
-            </form>
-            <div v-else class="text-center py-10">
-               <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 animate-bounce">✓</div>
-               <h3 class="text-2xl font-black mb-2 dark:text-white">Message Sent!</h3>
-               <p class="text-slate-500">We'll get back to you within 2 hours.</p>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <!-- Courses Section -->
+        <section id="courses" class="py-20 bg-white dark:bg-slate-900">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-12">
+              <div>
+                <h2 class="text-3xl sm:text-4xl font-black dark:text-white">
+                  {{ selectedCategory === 'all' ? 'Featured' : getCategoryName(selectedCategory) }} 
+                  <span class="text-blue-600">Courses</span>
+                </h2>
+                <p class="text-slate-500 dark:text-slate-400 mt-2">{{ filteredCourses.length }} courses found</p>
+              </div>
+              <div class="flex items-center space-x-2 mt-4 sm:mt-0">
+                <Filter class="w-4 h-4 text-slate-400" />
+                <select v-model="sortBy" class="bg-transparent border-none text-sm dark:text-white focus:outline-none">
+                  <option value="popular">Most Popular</option>
+                  <option value="newest">Newest</option>
+                  <option value="highest-rated">Highest Rated</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div v-for="course in sortedCourses.slice(0, 12)" :key="course.id"
+                class="group bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border border-slate-100 dark:border-slate-700">
+                
+                <div class="relative overflow-hidden h-48">
+                  <img :src="course.image" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <span class="absolute top-3 left-3 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg">{{ course.badge }}</span>
+                </div>
+
+                <div class="p-5">
+                  <div class="flex items-center space-x-2 mb-2">
+                    <Star class="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                    <span class="font-semibold text-sm dark:text-white">{{ course.rating }}</span>
+                    <span class="text-xs text-slate-400">({{ formatNumber(course.reviews) }} reviews)</span>
+                  </div>
+                  
+                  <h3 class="font-bold text-lg dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                    {{ course.title }}
+                  </h3>
+                  
+                  <p class="text-sm text-slate-500 mb-3">{{ course.instructor }}</p>
+                  
+                  <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2 text-xs text-slate-500">
+                      <Clock class="w-3 h-3" />
+                      <span>{{ course.hours }} hours</span>
+                    </div>
+                    <div class="flex items-center space-x-2 text-xs text-slate-500">
+                      <Users class="w-3 h-3" />
+                      <span>{{ formatNumber(course.students) }} students</span>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700">
+                    <div>
+                      <span class="text-xl font-black text-blue-600 dark:text-blue-400">{{ formatPrice(course.price) }}</span>
+                      <span class="text-sm text-slate-400 line-through ml-2">{{ formatPrice(course.originalPrice) }}</span>
+                    </div>
+                    <button @click.stop="addToCart(course)" class="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all">
+                      <ShoppingCart class="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center mt-12">
+              <button class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
+                Browse All Courses
+                <ChevronRight class="w-4 h-4 inline ml-1" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Benefits Section -->
+        <section class="py-20 bg-blue-600">
+          <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+              <h2 class="text-3xl sm:text-4xl font-black text-white">Why Learn with <span class="text-yellow-300">LearnHub?</span></h2>
+              <p class="text-blue-100 mt-4">Join millions of learners worldwide</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div v-for="benefit in benefits" :key="benefit.title" class="text-center text-white">
+                <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <component :is="benefit.icon" class="w-8 h-8" />
+                </div>
+                <h3 class="font-bold text-xl mb-2">{{ benefit.title }}</h3>
+                <p class="text-blue-100 text-sm">{{ benefit.description }}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="py-20 bg-white dark:bg-slate-900">
+          <div class="max-w-4xl mx-auto text-center px-4">
+            <h2 class="text-3xl sm:text-4xl font-black dark:text-white mb-4">Ready to Start Your Learning Journey?</h2>
+            <p class="text-slate-500 dark:text-slate-400 mb-8">Join 50 million+ learners and start a new skill today</p>
+            <button class="inline-block px-8 py-4 bg-blue-600 text-white font-bold rounded-full text-lg hover:bg-blue-700 hover:shadow-md transition-all duration-300">
+              Get Started for Free
+            </button>
+          </div>
+        </section>
+      </div>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-white dark:bg-slate-950 pt-20 pb-10 border-t border-slate-100 dark:border-slate-900">
-      <div class="max-w-7xl mx-auto px-6">
-        
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-12 mb-20">
-          
-          <div class="col-span-2 lg:col-span-2 space-y-6">
-            <div class="flex items-center space-x-3">
-              <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg shadow-blue-500/20">L</div>
-              <span class="text-3xl font-black dark:text-white tracking-tighter">Learn<span class="text-blue-600">Hub</span></span>
-            </div>
-            <p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed max-w-sm">
-              The elite ecosystem for professional growth. Start learning, stay ahead, and master your future.
-            </p>
-            <div class="flex items-center space-x-2 bg-slate-50 dark:bg-slate-900 p-2 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-inner max-w-xs">
-              <input type="email" placeholder="Email for updates" class="bg-transparent border-none w-full px-3 text-sm focus:ring-0 dark:text-white" />
-              <button class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors">Join</button>
-            </div>
+    <footer class="bg-slate-900 text-white py-12">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+          <div>
+            <h3 class="font-bold text-lg mb-4">LearnHub</h3>
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li><a href="#" class="hover:text-white transition">About Us</a></li>
+              <li><a href="#" class="hover:text-white transition">Careers</a></li>
+              <li><a href="#" class="hover:text-white transition">Press</a></li>
+            </ul>
           </div>
-
-          <div v-for="section in [
-            { title: 'Platform', links: ['Courses', 'Live Mentoring', 'Certification', 'Enterprise'] },
-            { title: 'Company', links: ['About Us', 'Success Stories', 'Join our Team', 'Contact'] },
-            { title: 'Legal', links: ['Accessibility', 'Privacy', 'User Agreement', 'Support'] }
-          ]" :key="section.title" class="col-span-1">
-            <h4 class="font-black text-slate-900 dark:text-white mb-6 text-[11px] uppercase tracking-[0.2em] opacity-80">{{ section.title }}</h4>
-            <ul class="space-y-4 text-[13px] text-slate-600 dark:text-slate-400 font-medium">
-              <li v-for="link in section.links" :key="link">
-                <a href="#" class="hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:pl-1 block">{{ link }}</a>
-              </li>
+          <div>
+            <h3 class="font-bold text-lg mb-4">Learn</h3>
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li><a href="#" class="hover:text-white transition">Categories</a></li>
+              <li><a href="#" class="hover:text-white transition">Courses</a></li>
+              <li><a href="#" class="hover:text-white transition">Certification</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg mb-4">Support</h3>
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li><a href="#" class="hover:text-white transition">Help Center</a></li>
+              <li><a href="#" class="hover:text-white transition">Contact Us</a></li>
+              <li><a href="#" class="hover:text-white transition">FAQs</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg mb-4">Legal</h3>
+            <ul class="space-y-2 text-sm text-slate-400">
+              <li><a href="#" class="hover:text-white transition">Privacy Policy</a></li>
+              <li><a href="#" class="hover:text-white transition">Terms of Service</a></li>
+              <li><a href="#" class="hover:text-white transition">Cookie Policy</a></li>
             </ul>
           </div>
         </div>
-
-        <div class="pt-10 border-t border-slate-100 dark:border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p class="text-slate-400 text-[11px] font-bold uppercase tracking-widest italic">
-            © 2026 LearnHub Education Global
-          </p>
-
-          <div class="flex items-center space-x-8 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
-            <span class="flex items-center space-x-2"><span>🛡️</span> <span>Verified Secure</span></span>
-            <span class="flex items-center space-x-2"><span>🌍</span> <span>Global Access</span></span>
-          </div>
+        <div class="border-t border-slate-800 pt-8 text-center text-sm text-slate-400">
+          <p>&copy; 2026 LearnHub. All rights reserved.</p>
         </div>
       </div>
     </footer>
@@ -652,53 +1163,40 @@ const sendMessage = async () => {
 </template>
 
 <style scoped>
-html {
-  scroll-behavior: smooth;
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-@keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-50%); }
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out forwards;
 }
 
-.animate-marquee {
-    animation: marquee 30s linear infinite;
-}
-
-.list-enter-active, .list-leave-active {
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.list-enter-from, .list-leave-to {
+.animate-fade-in-delay {
+  animation: fade-in 0.8s ease-out 0.3s forwards;
   opacity: 0;
-  transform: translateY(30px) scale(0.95);
 }
 
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-15px); }
-  100% { transform: translateY(0px); }
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-.hero-fade-enter-active,
-.hero-fade-leave-active {
-  transition: opacity 0.8s ease, transform 0.8s ease;
-}
-
-.hero-fade-enter-from {
+.animate-fade-in-delay-2 {
+  animation: fade-in 0.8s ease-out 0.6s forwards;
   opacity: 0;
-  transform: translateY(10px);
 }
 
-.hero-fade-leave-to {
+.animate-fade-in-delay-3 {
+  animation: fade-in 0.8s ease-out 0.9s forwards;
   opacity: 0;
-  transform: translateY(-10px);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 </style>

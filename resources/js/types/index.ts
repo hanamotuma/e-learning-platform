@@ -20,7 +20,7 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: {
-        user: User;
+        user: User | null;
     }; [key: string]: unknown;
     ziggy: {
         location: string;
@@ -35,10 +35,25 @@ export interface User {
     id: number;
     name: string;
     email: string;
-    avatar?: string;
     email_verified_at: string | null;
+    username?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip_code?: string;
+    country?: string;
+    phone?: string;
+    bio?: string;
+    interests?: string;
+    education?: string;
+    profile_picture_url?: string | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface BreadcrumbItem {
+    title: string;
+    href: string;
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
