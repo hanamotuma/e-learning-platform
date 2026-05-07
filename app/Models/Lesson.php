@@ -14,12 +14,15 @@ class Lesson extends Model
     
     protected $fillable = [
         'section_id',
+        'course_id',
         'title',
+        'description',
         'content',
         'order_position',
         'video_url',
         'duration_minutes',
         'is_free_preview',
+        'order',
     ];
 
     protected $casts = [

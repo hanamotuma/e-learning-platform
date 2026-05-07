@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class ProgressTracking extends Model
 {
     use HasFactory;
-    protected $table = 'progress_tracking'; // ✅ ADD THIS
+    protected $table = 'progress_tracking'; 
 
     protected $fillable = [
         'user_id',

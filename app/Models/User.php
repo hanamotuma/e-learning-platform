@@ -13,7 +13,10 @@ use App\Models\Enrollment;
 use App\Models\Payment;
 use App\Models\Review;
 use App\Models\Certificate;
-use App\Models\Activity;
+use App\Models\ProgressTracking;
+use App\Models\Notification;
+use App\Models\QuizAttempts;
+use App\Models\SupportTicket;
 use Spatie\Permission\Models\HasRole;
 
 class User extends Authenticatable
@@ -90,14 +93,14 @@ public function redirectRoute()
     // Added : HasMany return types to satisfy the IDE
     public function courses()
     {
-        return $this->belongsToMany(Course::class, 'enrollments')
+        return $this->hasMany(Course::class, 'enrollments', 'instructor_id', 'course_id')
                     ->withPivot('progress', 'completed', 'enrolled_at')
                     ->withTimestamps();
     }
 
     public function enrollments(): HasMany
     {
-        return $this->hasMany(Enrollment::class, 'user_id');
+        return $this->hasMany(Enrollment::class);
     }
   public function enrolledCourses()
 {
@@ -121,17 +124,32 @@ public function redirectRoute()
     }
     public function notifications()
 {
-    return $this->morphMany(\Illuminate\Notifications\DatabaseNotification::class, 'notifiable')->orderBy('created_at', 'desc');
+     return $this->hasMany(Notification::class);
+}
+
+public function progressTracking()
+{
+    return $this->hasMany(ProgressTracking::class);
 }
 
 public function unreadNotifications()
 {
-    return $this->notifications()->whereNull('read_at');
+    return $this->hasMany(Notification::class)->where('is_read', false);
 }
 public function certificates()
 {
     return $this->hasMany(Certificate::class);
 }
+public function quizAttempts()
+{
+    return $this->hasMany(QuizAttempts::class);
+}
+
+public function supportTickets()
+{
+    return $this->hasMany(SupportTicket::class);
+}
+
 public function upcomingActivities()
 {
     return $this->hasMany(Activity::class)

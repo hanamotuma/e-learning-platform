@@ -14,13 +14,13 @@ class Quiz extends Model
 
     protected $fillable = [
         'course_id',
-                'section_id', // Added
+        'section_id',
         'lesson_id',
         'title',
         'description',
         'time_limit_minutes',
         'passing_score',
-        'is_published', // Added to match migration
+        'is_published', 
     ];
 
     protected $casts = [

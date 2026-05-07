@@ -9,14 +9,14 @@ class QuizAttempt extends Model
 {
     use HasFactory;
 
-    // 🔥 FIXED: Match migration (id) or remove this line entirely
+   
     protected $primaryKey = 'id'; 
 
     protected $fillable = [
         'quiz_id',
         'user_id',
         'score',
-        'total_points', // 🔥 ADDED: Match migration
+        'total_points', 
         'answers',
         'is_passed',
         'started_at',
@@ -26,7 +26,7 @@ class QuizAttempt extends Model
     protected $casts = [
         'answers' => 'array',
         'is_passed' => 'boolean',
-        'score' => 'integer', // Match migration (integer)
+        'score' => 'integer', 
         'total_points' => 'integer',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',

@@ -188,7 +188,7 @@
 import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import axios from 'axios'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 import { Shield, CreditCard, CheckCircle, Loader2 } from 'lucide-vue-next'
 
 const props = defineProps({

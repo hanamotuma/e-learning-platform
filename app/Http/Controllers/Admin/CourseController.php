@@ -116,6 +116,39 @@ class CourseController extends Controller
             ->with('success', 'Course created successfully!');
     }
 
+    public function approve($id)
+{
+    $course = Course::findOrFail($id);
+    $course->update([
+        'is_published' => true,
+        'published_at' => now(),
+        'status' => 'published',
+    ]);
+    
+    // Notify instructor
+    Notification::create([
+        'user_id' => $course->instructor_id,
+        'type' => 'course_approved',
+        'title' => '🎉 Your Course Has Been Approved!',
+        'message' => 'Congratulations! Your course "' . $course->title . '" is now published and live on LearnHub.',
+        'action_url' => route('instructor.courses.edit', $course->id),
+    ]);
+    
+    // Notify all students who might be interested (optional)
+    $interestedUsers = User::where('interests', 'like', '%' . $course->category->name . '%')->get();
+    foreach ($interestedUsers as $user) {
+        Notification::create([
+            'user_id' => $user->id,
+            'type' => 'new_course_alert',
+            'title' => '📚 New Course Available!',
+            'message' => 'Check out "' . $course->title . '" - a new course in ' . $course->category->name,
+            'action_url' => route('course.show', $course->slug),
+        ]);
+    }
+    
+    return redirect()->back()->with('success', 'Course approved and published.');
+}
+
     /**
      * SHOW SINGLE COURSE (Admin View with Progress)
      */

@@ -21,30 +21,34 @@ class RegisteredUserController extends Controller
     }
 
     public function store(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'username' => 'required|string|max:255|unique:users',
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+        'password' => ['required', 'confirmed', Rules\Password::defaults()],
+    ]);
 
-        $user = User::create([
-            'username' => $request->username,
-            'full_name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'is_active' => true,
-        ]);
+    $user = User::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+    ]);
+    
+    $user->assignRole('student');   
+    event(new Registered($user));
 
-        // Assign student role - Make sure role exists
-        $user->assignRole('student');
+    Auth::login($user);
 
-        event(new Registered($user));
-
-        Auth::login($user);
-
-        // Redirect to home instead of dashboard to avoid role issues
-        return redirect()->route('home', ['showCart' => true])->with('success', 'Registration successful! Welcome to EduMind.');
+    // Check if there's a redirect after checkout
+    $redirectAfterCheckout = session('redirect_after_checkout') ?? $request->session()->get('redirect_after_checkout');
+    $redirectAfterLogin = session('redirect_after_login') ?? $request->session()->get('redirect_after_login');
+    
+    if ($redirectAfterCheckout || $redirectAfterLogin === '/checkout') {
+        $request->session()->forget('redirect_after_checkout');
+        $request->session()->forget('redirect_after_login');
+        return redirect('/checkout');
     }
+
+    return redirect(route('student.dashboard', absolute: false));
+}
 }

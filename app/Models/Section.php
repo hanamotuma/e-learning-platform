@@ -16,23 +16,21 @@ class Section extends Model
         'course_id',
         'order_position',
         'title',
+        'description',
     ];
 
     public function course()
-    {
-        // Use the default keys unless your Course model uses something else as PK
-        return $this->belongsTo(Course::class, 'course_id');
-    }
+{
+    return $this->belongsTo(Course::class);
+}
 
-    public function lessons()
-    {
-        return $this->hasMany(Lesson::class, 'section_id', 'id')
-            ->orderBy('order_position');
-    }
+   public function lessons()
+{
+    return $this->hasMany(Lesson::class)->orderBy('order');
+}
 
-    public function quizzes()
-    {
-        // FIX: The local key should be 'id' (the primary key of this Section)
-        return $this->hasMany(Quiz::class, 'section_id', 'id');
-    }
+   public function quizzes()
+{
+    return $this->hasMany(Quiz::class);
+}
 }

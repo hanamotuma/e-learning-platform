@@ -20,10 +20,10 @@ const selectedCategory = ref('all')
 const searchQuery = ref('')
 const sortBy = ref('popular')
 const currentPage = ref('home')
+const showCartDropdown = ref(false)
 
 // Cart state - Load from localStorage on initialization
 const cartItems = ref([])
-
 
 // Navigation items with their section IDs
 const navItems = [
@@ -60,7 +60,8 @@ const featuredCourses = ref([
     badge: 'Bestseller',
     level: 'Beginner to Advanced',
     date: '2026-01-15',
-    inCart: false
+    inCart: false,
+    slug: 'complete-web-development-bootcamp'
   },
   {
     id: 2,
@@ -77,7 +78,8 @@ const featuredCourses = ref([
     badge: 'Top Rated',
     level: 'Intermediate',
     date: '2026-02-01',
-    inCart: false
+    inCart: false,
+    slug: 'advanced-ui-ux-design'
   },
   {
     id: 3,
@@ -94,7 +96,8 @@ const featuredCourses = ref([
     badge: 'Trending',
     level: 'All Levels',
     date: '2026-01-10',
-    inCart: false
+    inCart: false,
+    slug: 'ai-ml-masterclass'
   },
   {
     id: 4,
@@ -111,7 +114,8 @@ const featuredCourses = ref([
     badge: 'Popular',
     level: 'Beginner',
     date: '2026-02-10',
-    inCart: false
+    inCart: false,
+    slug: 'digital-marketing-growth'
   },
   {
     id: 5,
@@ -128,7 +132,8 @@ const featuredCourses = ref([
     badge: 'Updated',
     level: 'Intermediate',
     date: '2026-01-20',
-    inCart: false
+    inCart: false,
+    slug: 'ios-swift-guide'
   },
   {
     id: 6,
@@ -145,7 +150,8 @@ const featuredCourses = ref([
     badge: 'Certification Prep',
     level: 'All Levels',
     date: '2026-01-05',
-    inCart: false
+    inCart: false,
+    slug: 'pmp-certification'
   },
   {
     id: 7,
@@ -162,7 +168,8 @@ const featuredCourses = ref([
     badge: 'Best for Beginners',
     level: 'Beginner',
     date: '2026-02-05',
-    inCart: false
+    inCart: false,
+    slug: 'python-data-science'
   },
   {
     id: 8,
@@ -179,7 +186,8 @@ const featuredCourses = ref([
     badge: 'Hot & New',
     level: 'All Levels',
     date: '2026-02-12',
-    inCart: false
+    inCart: false,
+    slug: 'complete-digital-marketing'
   },
   {
     id: 9,
@@ -196,7 +204,8 @@ const featuredCourses = ref([
     badge: 'New Release',
     level: 'Intermediate',
     date: '2026-02-15',
-    inCart: false
+    inCart: false,
+    slug: 'openclaw-ai-agents'
   },
   {
     id: 10,
@@ -213,7 +222,8 @@ const featuredCourses = ref([
     badge: 'Best Price',
     level: 'Advanced',
     date: '2026-01-25',
-    inCart: false
+    inCart: false,
+    slug: 'nlp-deep-learning'
   },
   {
     id: 11,
@@ -230,7 +240,8 @@ const featuredCourses = ref([
     badge: 'Trending',
     level: 'Intermediate',
     date: '2026-02-20',
-    inCart: false
+    inCart: false,
+    slug: 'react-19-guide'
   },
   {
     id: 12,
@@ -247,7 +258,8 @@ const featuredCourses = ref([
     badge: 'Certification',
     level: 'All Levels',
     date: '2026-02-08',
-    inCart: false
+    inCart: false,
+    slug: 'aws-solutions-architect'
   },
   {
     id: 13,
@@ -264,7 +276,8 @@ const featuredCourses = ref([
     badge: 'Popular',
     level: 'Intermediate',
     date: '2026-01-28',
-    inCart: false
+    inCart: false,
+    slug: 'devops-bootcamp'
   },
   {
     id: 14,
@@ -281,7 +294,8 @@ const featuredCourses = ref([
     badge: 'Hot & New',
     level: 'Beginner',
     date: '2026-02-18',
-    inCart: false
+    inCart: false,
+    slug: 'cybersecurity-ethical-hacking'
   },
   {
     id: 15,
@@ -298,7 +312,8 @@ const featuredCourses = ref([
     badge: 'Updated',
     level: 'Beginner',
     date: '2026-02-14',
-    inCart: false
+    inCart: false,
+    slug: 'flutter-dart-mobile'
   },
   {
     id: 16,
@@ -315,7 +330,8 @@ const featuredCourses = ref([
     badge: 'Top Rated',
     level: 'Intermediate',
     date: '2026-01-30',
-    inCart: false
+    inCart: false,
+    slug: 'typescript-guide'
   },
   {
     id: 17,
@@ -332,7 +348,8 @@ const featuredCourses = ref([
     badge: 'Bestseller',
     level: 'All Levels',
     date: '2026-01-12',
-    inCart: false
+    inCart: false,
+    slug: 'mba-business-strategy'
   },
   {
     id: 18,
@@ -349,7 +366,8 @@ const featuredCourses = ref([
     badge: 'Top Rated',
     level: 'Beginner',
     date: '2026-02-06',
-    inCart: false
+    inCart: false,
+    slug: 'financial-accounting'
   },
   {
     id: 19,
@@ -366,7 +384,8 @@ const featuredCourses = ref([
     badge: 'Popular',
     level: 'Intermediate',
     date: '2026-01-22',
-    inCart: false
+    inCart: false,
+    slug: 'data-analytics-business'
   },
   {
     id: 20,
@@ -383,7 +402,8 @@ const featuredCourses = ref([
     badge: 'Certification',
     level: 'Intermediate',
     date: '2026-02-09',
-    inCart: false
+    inCart: false,
+    slug: 'leadership-management'
   },
   {
     id: 21,
@@ -400,7 +420,8 @@ const featuredCourses = ref([
     badge: 'Trending',
     level: 'All Levels',
     date: '2026-02-16',
-    inCart: false
+    inCart: false,
+    slug: 'sales-negotiation'
   },
   {
     id: 22,
@@ -417,7 +438,8 @@ const featuredCourses = ref([
     badge: 'New',
     level: 'Beginner',
     date: '2026-02-11',
-    inCart: false
+    inCart: false,
+    slug: 'blockchain-crypto'
   },
   {
     id: 23,
@@ -434,7 +456,8 @@ const featuredCourses = ref([
     badge: 'Best for Beginners',
     level: 'Beginner',
     date: '2026-02-03',
-    inCart: false
+    inCart: false,
+    slug: 'power-bi-data-viz'
   },
   {
     id: 24,
@@ -451,7 +474,8 @@ const featuredCourses = ref([
     badge: 'Popular',
     level: 'Intermediate',
     date: '2026-01-18',
-    inCart: false
+    inCart: false,
+    slug: 'ux-research-strategy'
   },
   {
     id: 25,
@@ -468,7 +492,8 @@ const featuredCourses = ref([
     badge: 'Trending',
     level: 'All Levels',
     date: '2026-02-07',
-    inCart: false
+    inCart: false,
+    slug: 'seo-content-marketing'
   },
   {
     id: 26,
@@ -485,7 +510,8 @@ const featuredCourses = ref([
     badge: 'Top Rated',
     level: 'Intermediate',
     date: '2026-01-26',
-    inCart: false
+    inCart: false,
+    slug: 'product-management'
   }
 ])
 
@@ -647,6 +673,7 @@ const handleScroll = () => {
 // Scroll to section
 const scrollTo = (sectionId) => {
   isMobileMenuOpen.value = false
+  showCartDropdown.value = false
   
   if (currentPage.value !== 'home') {
     currentPage.value = 'home'
@@ -676,27 +703,139 @@ const scrollTo = (sectionId) => {
 }
 
 const openCart = () => {
-  currentPage.value = 'cart'
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  showCartDropdown.value = !showCartDropdown.value
+  if (currentPage.value === 'cart') {
+    currentPage.value = 'home'
+  } else {
+    currentPage.value = 'cart'
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }
 }
 
 const closeCart = () => {
   currentPage.value = 'home'
+  showCartDropdown.value = false
+}
+
+// ========== UPDATED: Course click handler - Navigates to /course/{id} ==========
+const goToCourse = (course) => {
+  // Use the course ID to navigate
+  const courseId = course.id
+  
+  // Store for redirect after login if needed
+  sessionStorage.setItem('intended_course_id', courseId)
+  sessionStorage.setItem('redirect_after_login', `/course/${courseId}`)
+  
+  // Navigate to course page
+  router.get(`/course/${courseId}`)
+}
+
+// Browse all courses button handler
+const browseAllCourses = () => {
+  const page = usePage()
+  const isLoggedIn = !!page.props.auth?.user
+  
+  if (!isLoggedIn) {
+    sessionStorage.setItem('redirect_after_login', '/courses')
+    router.get(route('login'))
+  } else {
+    router.get('/courses')
+  }
+}
+
+// Proceed to checkout from cart
+// FIXED: Proceed to checkout - handles login/register properly
+const proceedToCheckout = () => {
+  if (cartItems.value.length === 0) {
+    showCartMessage('Your cart is empty')
+    return
+  }
+  
+  // Store cart items for checkout
+  sessionStorage.setItem('checkout_cart', JSON.stringify(cartItems.value))
+  
+  const page = usePage()
+  const isLoggedIn = !!page.props.auth?.user
+  
+  if (!isLoggedIn) {
+    // Not logged in - save intent and redirect to register/signup page
+    sessionStorage.setItem('redirect_after_checkout', 'true')
+    sessionStorage.setItem('redirect_after_login', '/checkout')
+    router.get(route('register'))
+  } else {
+    // Logged in - go directly to checkout page
+    router.get('/checkout')
+  }
+}
+
+// Get started button handler
+const getStarted = () => {
+  const page = usePage()
+  const isLoggedIn = !!page.props.auth?.user
+  
+  if (!isLoggedIn) {
+    sessionStorage.setItem('redirect_after_login', '/courses')
+    router.get(route('register'))
+  } else {
+    router.get('/courses')
+  }
+}
+
+// Toast message for cart
+const toastMessage = ref('')
+const showToast = ref(false)
+
+const showCartMessage = (message) => {
+  toastMessage.value = message
+  showToast.value = true
+  setTimeout(() => {
+    showToast.value = false
+  }, 2000)
+}
+
+// Override addToCart with toast
+const addToCartWithToast = (course, event) => {
+  if (event) event.stopPropagation()
+  
+  if (!cartItems.value.find(item => item.id === course.id)) {
+    cartItems.value.push(course)
+    course.inCart = true
+    saveCartToLocalStorage()
+    showCartMessage(`${course.title} added to cart!`)
+  } else {
+    showCartMessage(`${course.title} is already in cart`)
+  }
+}
+
+// Close dropdown when clicking outside
+const handleClickOutside = (event) => {
+  const cartButton = document.querySelector('.cart-button')
+  const cartDropdown = document.querySelector('.cart-dropdown')
+  if (showCartDropdown.value && cartDropdown && !cartDropdown.contains(event.target) && !cartButton?.contains(event.target)) {
+    showCartDropdown.value = false
+  }
 }
 
 onMounted(() => {
   initTheme()
   window.addEventListener('scroll', handleScroll)
   loadCartFromLocalStorage()
+  document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>
 
 <template>
   <div :class="{ 'dark': isDarkMode }" class="min-h-screen bg-white dark:bg-slate-900">
+    <!-- Toast Notification -->
+    <div v-if="showToast" class="fixed top-24 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg animate-fade-in">
+      {{ toastMessage }}
+    </div>
+
     <!-- Progress Bar -->
     <div class="fixed top-0 left-0 h-1 bg-blue-600 z-50 transition-all duration-150" 
          :style="{ width: scrollPercentage + '%' }"></div>
@@ -750,24 +889,52 @@ onUnmounted(() => {
               <Search class="absolute right-4 top-2.5 w-5 h-5 text-slate-400" />
             </div>
 
-            <!-- Cart Button -->
-            <button @click="openCart" class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-              <ShoppingCart class="w-5 h-5 text-slate-600 dark:text-slate-300" />
-              <span v-if="cartCount > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                {{ cartCount }}
-              </span>
-            </button>
+            <!-- Cart Button with Dropdown -->
+            <div class="relative cart-button">
+              <button @click="openCart" class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+                <ShoppingCart class="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                <span v-if="cartCount > 0" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {{ cartCount }}
+                </span>
+              </button>
+
+              <!-- Cart Dropdown -->
+              <div v-if="showCartDropdown && cartItems.length > 0" class="cart-dropdown absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                  <h3 class="font-bold dark:text-white">Your Cart ({{ cartCount }})</h3>
+                  <button @click="showCartDropdown = false" class="text-slate-400 hover:text-slate-600">&times;</button>
+                </div>
+                <div class="max-h-80 overflow-y-auto">
+                  <div v-for="item in cartItems.slice(0, 3)" :key="item.id" class="p-3 border-b border-slate-100 dark:border-slate-700 flex gap-3">
+                    <img :src="item.image" class="w-12 h-12 rounded-lg object-cover" />
+                    <div class="flex-1">
+                      <h4 class="font-medium text-sm dark:text-white line-clamp-1">{{ item.title }}</h4>
+                      <p class="text-blue-600 font-bold text-sm">{{ formatPrice(item.price) }}</p>
+                    </div>
+                    <button @click="removeFromCart(item)" class="text-red-500 hover:text-red-700">✕</button>
+                  </div>
+                </div>
+                <div class="p-4 border-t border-slate-200 dark:border-slate-700">
+                  <div class="flex justify-between mb-3">
+                    <span class="font-bold dark:text-white">Total:</span>
+                    <span class="font-bold text-blue-600">{{ formatPrice(cartTotal) }}</span>
+                  </div>
+                  <button @click="proceedToCheckout" class="w-full py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
+                    Checkout →
+                  </button>
+                </div>
+              </div>
+            </div>
             
-            <!-- Auth Buttons - Log In and Sign Up next to cart -->
-            <!-- In the header auth buttons -->
+            <!-- Auth Buttons -->
             <div class="flex items-center space-x-3">
-           <Link :href="route('login')" class="px-5 py-2 text-slate-600 dark:text-slate-300 font-medium hover:text-blue-600 transition-colors">
-                 Log In
-             </Link>
-            <Link :href="route('register')" class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
-            Sign Up
-           </Link>
-             </div>
+              <Link :href="route('login')" class="px-5 py-2 text-slate-600 dark:text-slate-300 font-medium hover:text-blue-600 transition-colors">
+                Log In
+              </Link>
+              <Link :href="route('register')" class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
+                Sign Up
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -784,12 +951,12 @@ onUnmounted(() => {
             {{ item.name }}
           </button>
           <div class="pt-4 space-y-3 border-t border-slate-200 dark:border-slate-700">
-            <button class="block w-full text-center py-3 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700 rounded-xl">
+            <Link :href="route('login')" class="block w-full text-center py-3 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700 rounded-xl">
               Log In
-            </button>
-            <button class="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl">
+            </Link>
+            <Link :href="route('register')" class="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl">
               Sign Up Free
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -801,7 +968,7 @@ onUnmounted(() => {
         <div class="flex items-center justify-between mb-8">
           <div>
             <button @click="closeCart" class="text-blue-600 hover:text-blue-700 flex items-center space-x-2 mb-4">
-              
+              <ChevronLeft class="w-5 h-5" /> Back to Home
             </button>
             <h1 class="text-3xl font-black text-slate-800 dark:text-white">Course Cart</h1>
             <p class="text-slate-500 dark:text-slate-400 mt-1">{{ cartCount }} {{ cartCount === 1 ? 'course' : 'courses' }} in cart</p>
@@ -867,16 +1034,10 @@ onUnmounted(() => {
                   <span class="font-bold dark:text-white">Total</span>
                   <span class="text-2xl font-black text-blue-600">{{ formatPrice(cartTotal) }}</span>
                 </div>
-                <button class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center space-x-2">
-                  <!-- In the cart page, replace the Proceed to Checkout button -->
-<Link 
-  :href="route('checkout.index')" 
-  class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center space-x-2"
->
+               <button @click="proceedToCheckout" class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center space-x-2">
   <CreditCard class="w-4 h-4" />
   <span>Proceed to Checkout</span>
-</Link>
-                </button>
+</button>
                 <div class="flex items-center justify-center space-x-4 mt-4 text-xs text-slate-400">
                   <span class="flex items-center space-x-1"><Shield class="w-3 h-3" /> Secure Payment</span>
                   <span class="flex items-center space-x-1"><Truck class="w-3 h-3" /> Lifetime Access</span>
@@ -895,7 +1056,7 @@ onUnmounted(() => {
                   <p class="text-xs text-slate-500 mt-1">{{ course.instructor }}</p>
                   <div class="flex items-center justify-between mt-2">
                     <span class="text-sm font-bold text-blue-600">{{ formatPrice(course.price) }}</span>
-                    <button @click="addToCart(course)" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700">Add to Cart</button>
+                    <button @click="addToCartWithToast(course, $event)" class="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700">Add to Cart</button>
                   </div>
                 </div>
               </div>
@@ -934,7 +1095,7 @@ onUnmounted(() => {
                     placeholder="What do you want to learn?" 
                     class="w-full px-6 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full text-slate-800 dark:text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <button class="absolute right-2 top-2 px-6 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all">
+                  <button @click="scrollTo('courses')" class="absolute right-2 top-2 px-6 py-2 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 transition-all">
                     Search
                   </button>
                 </div>
@@ -1030,7 +1191,9 @@ onUnmounted(() => {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <!-- UPDATED: Course card with @click to goToCourse -->
               <div v-for="course in sortedCourses.slice(0, 12)" :key="course.id"
+                @click="goToCourse(course)"
                 class="group bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border border-slate-100 dark:border-slate-700">
                 
                 <div class="relative overflow-hidden h-48">
@@ -1067,7 +1230,7 @@ onUnmounted(() => {
                       <span class="text-xl font-black text-blue-600 dark:text-blue-400">{{ formatPrice(course.price) }}</span>
                       <span class="text-sm text-slate-400 line-through ml-2">{{ formatPrice(course.originalPrice) }}</span>
                     </div>
-                    <button @click.stop="addToCart(course)" class="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all">
+                    <button @click.stop="addToCartWithToast(course, $event)" class="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all">
                       <ShoppingCart class="w-4 h-4" />
                     </button>
                   </div>
@@ -1076,7 +1239,7 @@ onUnmounted(() => {
             </div>
 
             <div class="text-center mt-12">
-              <button class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
+              <button @click="browseAllCourses" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
                 Browse All Courses
                 <ChevronRight class="w-4 h-4 inline ml-1" />
               </button>
@@ -1109,7 +1272,7 @@ onUnmounted(() => {
           <div class="max-w-4xl mx-auto text-center px-4">
             <h2 class="text-3xl sm:text-4xl font-black dark:text-white mb-4">Ready to Start Your Learning Journey?</h2>
             <p class="text-slate-500 dark:text-slate-400 mb-8">Join 50 million+ learners and start a new skill today</p>
-            <button class="inline-block px-8 py-4 bg-blue-600 text-white font-bold rounded-full text-lg hover:bg-blue-700 hover:shadow-md transition-all duration-300">
+            <button @click="getStarted" class="inline-block px-8 py-4 bg-blue-600 text-white font-bold rounded-full text-lg hover:bg-blue-700 hover:shadow-md transition-all duration-300">
               Get Started for Free
             </button>
           </div>

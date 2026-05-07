@@ -41,50 +41,31 @@ class AuthenticatedSessionController extends Controller
         $admin = Admin::where('email', $credentials['email'])->first();
 
         if ($admin && Hash::check($credentials['password'], $admin->password)) {
-
             Auth::guard('admin')->login($admin);
             $request->session()->regenerate();
-
-        
-        if ($user->hasRole('admin')) {
-            return redirect()->route('/admin/dashboard');
-        }
-
-        if ($user->hasRole('instructor')) {
-            return redirect()->route('/instructor/dashboard');
-        }
-
-          if (Auth::user('student') || !Auth::user()->role) {
-        return redirect('/student/dashboard');
-    }
-
-        // fallback
-        return redirect('/');
+            
+            // Redirect admin to admin dashboard
             return redirect()->route('admin.dashboard');
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 🔵 USER LOGIN (WITH ROLE)
-        |--------------------------------------------------------------------------
-        */
-        $user = User::where('email', $credentials['email'])->first();
+/**
+ * USER LOGIN (WITH ROLE)
+ */
+$user = User::where('email', $credentials['email'])->first();
 
-        if ($user && Hash::check($credentials['password'], $user->password)) {
+if ($user && Hash::check($credentials['password'], $user->password)) {
+    Auth::guard('web')->login($user);
+    $request->session()->regenerate();
 
-            Auth::guard('web')->login($user);
-            $request->session()->regenerate();
+    // ROLE BASED REDIRECT (ONLY USERS)
+    if ($user->role === 'student') {
+        return redirect()->route('user.dashboard');
+    }
 
-            // 🎓 ROLE BASED REDIRECT (ONLY USERS)
-            if ($user->role === 'student') {
-                return redirect()->route('user.dashboard');
-            }
-
-            if ($user->role === 'instructor') {
-                return redirect()->route('instructor.dashboard');
-            }
-        }
-
+    if ($user->role === 'instructor') {
+        return redirect()->route('instructor.dashboard');
+    }
+}
         /*
         |--------------------------------------------------------------------------
         | ❌ FAILED LOGIN

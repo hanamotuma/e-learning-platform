@@ -47,6 +47,16 @@ class Course extends Model
         return $this->belongsTo(Category::class);
     }
 
+    /**
+ * Get the route key for the model.
+ *
+ * @return string
+ */
+public function getRouteKeyName()
+{
+    return 'slug';
+}
+
     public function instructor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'instructor_id');
@@ -81,6 +91,10 @@ class Course extends Model
     {
         return $this->hasMany(Payment::class);
     }
+    public function quizzes()
+{
+    return $this->hasMany(Quiz::class);
+}
     public function getFinalPriceAttribute()
     {
         // Placeholder for discount logic

@@ -5,35 +5,31 @@ namespace App\Http\Controllers;
 use App\Models\Quiz;
 use App\Models\QuizAttempt;
 use App\Models\Question;
+use App\Models\Option;
 use App\Models\Enrollment;
 use App\Models\ProgressTracking;
 use App\Models\Certificate;
-use App\Jobs\GenerateCertificate;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class QuizController extends Controller
 {
-    protected $quizService;
-    public function __construct()
-    {
-        $this->quizService = new \App\Services\QuizService();
-    }
     public function show($id)
     {
-        $quiz = Quiz::with(['section', 'course', 'questions'])
+        $quiz = Quiz::with(['section', 'course', 'questions.options'])
             ->findOrFail($id);
         
         $user = Auth::user();
         
         $enrollment = Enrollment::where('user_id', $user->id)
             ->where('course_id', $quiz->course_id)
+            ->where('status', 'active')
             ->first();
         
-        if (!$enrollment || $enrollment->status === 'dropped') {
-            return redirect()->route('courses.show', $quiz->course_id)
+        if (!$enrollment) {
+            return redirect()->route('courses.show', $quiz->course->slug)
                 ->with('error', 'You need to enroll in this course to take the quiz.');
         }
         
@@ -43,19 +39,30 @@ class QuizController extends Controller
             ->get();
         
         $hasPassed = $attempts->contains('is_passed', true);
-        $maxAttempts = 3;
         $attemptsCount = $attempts->count();
-        $canAttempt = $attemptsCount < $maxAttempts && !$hasPassed;
+        $canAttempt = $attemptsCount < $quiz->max_attempts && !$hasPassed;
+        
+        // Get completed lessons in this section to unlock quiz
+        $completedLessonsInSection = ProgressTracking::where('user_id', $user->id)
+            ->where('course_id', $quiz->course_id)
+            ->whereIn('lesson_id', $quiz->section->lessons->pluck('id'))
+            ->where('status', 'completed')
+            ->count();
+        
+        $totalLessonsInSection = $quiz->section->lessons->count();
+        $isUnlocked = $totalLessonsInSection === 0 || $completedLessonsInSection >= $totalLessonsInSection;
         
         return Inertia::render('Quizzes/Show', [
             'quiz' => $quiz,
             'attempts' => $attempts,
             'hasPassed' => $hasPassed,
-            'canAttempt' => $canAttempt,
-            'remainingAttempts' => max(0, $maxAttempts - $attemptsCount),
+            'canAttempt' => $canAttempt && $isUnlocked,
+            'remainingAttempts' => max(0, $quiz->max_attempts - $attemptsCount),
+            'isUnlocked' => $isUnlocked,
+            'requiredLessons' => $totalLessonsInSection,
+            'completedLessons' => $completedLessonsInSection,
         ]);
     }
-    
     
     public function start($id)
     {
@@ -64,7 +71,8 @@ class QuizController extends Controller
         
         $enrollment = Enrollment::where('user_id', $user->id)
             ->where('course_id', $quiz->course_id)
-            ->exists();
+            ->where('status', 'active')
+            ->first();
         
         if (!$enrollment) {
             return redirect()->back()->with('error', 'You are not enrolled in this course.');
@@ -83,7 +91,7 @@ class QuizController extends Controller
             ->where('user_id', $user->id)
             ->count();
         
-        if ($attemptsCount >= 3) {
+        if ($attemptsCount >= $quiz->max_attempts) {
             return redirect()->back()->with('error', 'You have reached the maximum number of attempts.');
         }
         
@@ -93,16 +101,12 @@ class QuizController extends Controller
             'started_at' => now(),
         ]);
         
-        // Note: Using 'id' as standard. Change to 'attempt_id' if your migration specifies it.
         return redirect()->route('quizzes.take', $attempt->id);
     }
     
-    /**
-     * View for taking the actual quiz.
-     */
     public function take($attemptId)
     {
-        $attempt = QuizAttempt::with(['quiz.questions', 'quiz.course'])
+        $attempt = QuizAttempt::with(['quiz.questions.options', 'quiz.course'])
             ->findOrFail($attemptId);
         
         if ($attempt->user_id !== Auth::id()) {
@@ -115,36 +119,23 @@ class QuizController extends Controller
         }
         
         $quiz = $attempt->quiz;
-        $timeRemaining = null;
-
-        if ($quiz->time_limit_minutes) {
-            $timeElapsed = now()->diffInMinutes($attempt->started_at);
-            $timeRemaining = max(0, $quiz->time_limit_minutes - $timeElapsed);
-            
-            if ($timeRemaining <= 0) {
-                // Auto-submit with empty request if time is up
-                return $this->submit($attemptId, new Request());
-            }
-        }
-        
-        // Shuffle questions for variety, but keep them consistent for the same attempt session if needed
         $questions = $quiz->questions->shuffle();
+        
+        // Decode existing answers if any
+        $savedAnswers = $attempt->answers ? json_decode($attempt->answers, true) : [];
         
         return Inertia::render('Quizzes/Take', [
             'attempt' => $attempt,
             'quiz' => $quiz,
             'questions' => $questions,
-            'timeRemaining' => $timeRemaining,
+            'savedAnswers' => $savedAnswers,
             'totalQuestions' => $questions->count(),
         ]);
     }
     
-    /**
-     * Process the quiz submission.
-     */
     public function submit($attemptId, Request $request)
     {
-        $attempt = QuizAttempt::with(['quiz.questions'])
+        $attempt = QuizAttempt::with(['quiz.questions.options', 'quiz.course'])
             ->findOrFail($attemptId);
         
         if ($attempt->completed_at) {
@@ -160,44 +151,65 @@ class QuizController extends Controller
         $results = [];
         
         foreach ($questions as $question) {
-            $totalPoints += $question->points;
+            $totalPoints += $question->marks;
             $userAnswer = $answers[$question->id] ?? null;
             $isCorrect = $this->checkAnswer($question, $userAnswer);
             
             if ($isCorrect) {
-                $score += $question->points;
+                $score += $question->marks;
             }
             
             $results[$question->id] = [
                 'user_answer' => $userAnswer,
                 'is_correct' => $isCorrect,
-                'correct_answer' => $question->correct_answer,
-                'points' => $question->points,
-                'explanation' => $question->explanation,
+                'correct_answer' => $this->getCorrectAnswer($question),
+                'points' => $question->marks,
+                'explanation' => $question->explanation ?? 'No explanation provided.',
             ];
         }
         
-        $percentage = ($totalPoints > 0) ? ($score / $totalPoints) * 100 : 0;
-        $isPassed = $percentage >= ($quiz->passing_score ?? 70);
+        $percentage = $totalPoints > 0 ? ($score / $totalPoints) * 100 : 0;
+        $isPassed = $percentage >= $quiz->passing_score;
         
         $attempt->update([
             'score' => round($percentage, 2),
-            'answers' => $results, // Ensure this is cast to 'array' in your Model
+            'answers' => $results,
             'is_passed' => $isPassed,
             'completed_at' => now(),
         ]);
         
-        if ($isPassed) {
-            $enrollment = Enrollment::where('user_id', Auth::id())
-                ->where('course_id', $quiz->course_id)
-                ->first();
-            
-            if ($enrollment) {
-                $this->updateCourseProgress($enrollment);
-            }
-        }
+        // Update course progress
+        $this->updateCourseProgress($attempt->user_id, $quiz->course_id);
+        
+        // Notify student of result
+        Notification::create([
+            'user_id' => $attempt->user_id,
+            'type' => $isPassed ? 'quiz_passed' : 'quiz_failed',
+            'title' => $isPassed ? '🎉 Quiz Passed!' : '📝 Quiz Completed',
+            'message' => $isPassed 
+                ? "You passed \"{$quiz->title}\" with {$percentage}%! Great job!" 
+                : "You scored {$percentage}% on \"{$quiz->title}\". Please review and try again.",
+            'action_url' => route('quizzes.results', $attempt->id),
+        ]);
         
         return redirect()->route('quizzes.results', $attempt->id);
+    }
+    
+    public function saveProgress($attemptId, Request $request)
+    {
+        $attempt = QuizAttempt::findOrFail($attemptId);
+        
+        if ($attempt->user_id !== Auth::id()) {
+            abort(403);
+        }
+        
+        if (!$attempt->completed_at) {
+            $attempt->update([
+                'answers' => json_encode($request->input('answers', [])),
+            ]);
+        }
+        
+        return response()->json(['success' => true]);
     }
     
     public function results($attemptId)
@@ -209,83 +221,125 @@ class QuizController extends Controller
             return redirect()->route('quizzes.take', $attemptId);
         }
         
+        $results = $attempt->answers ? json_decode($attempt->answers, true) : [];
+        
         return Inertia::render('Quizzes/Results', [
             'attempt' => $attempt,
             'quiz' => $attempt->quiz,
-            'results' => $attempt->answers,
+            'results' => $results,
+            'score' => $attempt->score,
+            'isPassed' => $attempt->is_passed,
         ]);
     }
     
     private function checkAnswer($question, $userAnswer)
     {
         if (is_null($userAnswer)) return false;
-
-        $correctAnswer = $question->correct_answer;
         
-        switch ($question->question_type) {
-            case 'multiple_choice':
+        switch ($question->type) {
+            case 'mcq':
+                $correctOption = $question->options->where('is_correct', true)->first();
+                return $correctOption && $correctOption->id == $userAnswer;
+                
             case 'true_false':
-                return trim($userAnswer) == trim($correctAnswer);
+                $correctOption = $question->options->where('is_correct', true)->first();
+                return $correctOption && $correctOption->option_text == $userAnswer;
+                
             case 'short_answer':
-                return strtolower(trim($userAnswer)) === strtolower(trim($correctAnswer));
+                $adminAnswer = \App\Models\AdminAnswer::where('question_id', $question->id)->first();
+                if ($adminAnswer && $adminAnswer->correct_text) {
+                    return strtolower(trim($userAnswer)) === strtolower(trim($adminAnswer->correct_text));
+                }
+                return false;
+                
             default:
                 return false;
         }
     }
     
-    private function updateCourseProgress(Enrollment $enrollment)
+    private function getCorrectAnswer($question)
     {
-        $course = $enrollment->course()->with(['sections.lessons', 'sections.quizzes'])->first();
-        
-        $totalLessons = 0;
-        $totalQuizzes = 0;
-
-        foreach ($course->sections as $section) {
-            $totalLessons += $section->lessons->count();
-            $totalQuizzes += $section->quizzes->count();
+        switch ($question->type) {
+            case 'mcq':
+                $correct = $question->options->where('is_correct', true)->first();
+                return $correct ? $correct->option_text : 'No correct answer set';
+                
+            case 'true_false':
+                return 'True or False answer';
+                
+            case 'short_answer':
+                $adminAnswer = \App\Models\AdminAnswer::where('question_id', $question->id)->first();
+                return $adminAnswer ? $adminAnswer->correct_text : 'No answer key';
+                
+            default:
+                return 'Answer key not available';
         }
-
-        $totalItems = $totalLessons + $totalQuizzes;
+    }
+    
+    private function updateCourseProgress($userId, $courseId)
+    {
+        $course = \App\Models\Course::with(['sections.lessons', 'sections.quizzes'])->find($courseId);
+        $enrollment = Enrollment::where('user_id', $userId)->where('course_id', $courseId)->first();
         
-        $completedLessons = ProgressTracking::where('enrollment_id', $enrollment->id)
-            ->where('is_completed', true)
+        if (!$enrollment) return;
+        
+        $completedLessons = ProgressTracking::where('user_id', $userId)
+            ->where('course_id', $courseId)
+            ->where('status', 'completed')
             ->count();
-            
-        $passedQuizzes = QuizAttempt::where('user_id', $enrollment->user_id)
-            ->whereIn('quiz_id', $course->sections->flatMap->quizzes->pluck('id'))
+        
+        $totalLessons = $course->sections->sum(function($s) { return $s->lessons->count(); });
+        
+        $passedQuizzes = QuizAttempt::where('user_id', $userId)
             ->where('is_passed', true)
+            ->whereIn('quiz_id', $course->sections->flatMap->quizzes->pluck('id'))
             ->distinct('quiz_id')
             ->count();
         
+        $totalQuizzes = $course->sections->sum(function($s) { return $s->quizzes->count(); });
+        
+        $totalItems = $totalLessons + $totalQuizzes;
         $completedItems = $completedLessons + $passedQuizzes;
-        $progressPercentage = $totalItems > 0 ? min(100, round(($completedItems / $totalItems) * 100)) : 0;
+        
+        $progressPercentage = $totalItems > 0 ? round(($completedItems / $totalItems) * 100) : 0;
         
         $enrollment->update([
             'progress_percentage' => $progressPercentage,
-            'status' => $progressPercentage >= 100 ? 'completed' : 'in_progress',
-            'completed_at' => ($progressPercentage >= 100 && !$enrollment->completed_at) ? now() : $enrollment->completed_at,
+            'status' => $progressPercentage >= 100 ? 'completed' : 'active',
+            'completed_at' => $progressPercentage >= 100 ? now() : $enrollment->completed_at,
         ]);
         
-        if ($progressPercentage >= 100) {
+        if ($progressPercentage >= 100 && !$enrollment->certificate_issued) {
             $this->generateCertificate($enrollment);
         }
     }
     
     private function generateCertificate($enrollment)
     {
-        $existingCertificate = Certificate::where('enrollment_id', $enrollment->id)->first();
+        $existingCertificate = Certificate::where('user_id', $enrollment->user_id)
+            ->where('course_id', $enrollment->course_id)
+            ->first();
         
         if (!$existingCertificate) {
-            $certificateNumber = 'EDM-' . strtoupper(uniqid()) . '-' . $enrollment->id;
+            $certificateNumber = 'CERT-' . strtoupper(uniqid()) . '-' . $enrollment->id;
             
-            $certificate = Certificate::create([
+            Certificate::create([
+                'user_id' => $enrollment->user_id,
+                'course_id' => $enrollment->course_id,
                 'enrollment_id' => $enrollment->id,
                 'certificate_number' => $certificateNumber,
                 'issued_at' => now(),
-                'pdf_url' => null, // Job will fill this
             ]);
             
-            dispatch(new GenerateCertificate($certificate));
+            $enrollment->update(['certificate_issued' => true]);
+            
+            Notification::create([
+                'user_id' => $enrollment->user_id,
+                'type' => 'certificate_earned',
+                'title' => '🎓 Certificate Earned!',
+                'message' => 'Congratulations! You\'ve completed the course. Your certificate is ready.',
+                'action_url' => route('certificates.index'),
+            ]);
         }
     }
 }

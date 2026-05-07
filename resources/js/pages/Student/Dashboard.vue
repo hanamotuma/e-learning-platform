@@ -187,7 +187,7 @@
 
 <script setup>
 import { Link } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/layouts/AuthLayout.vue'
+import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 import { BookOpen, CheckCircle, TrendingUp, Award, Star } from 'lucide-vue-next'
 
 const props = defineProps({
