@@ -3,12 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
-
 use Illuminate\Notifications\Notifiable;
-
+use Illiminate\Database\Eloquent\Factories\HasFactory;
 class Admin extends Authenticatable
 {
-    use Notifiable;
+    use HasFactory, Notifiable;
 
     /**
      * Table name (important because it's not plural)

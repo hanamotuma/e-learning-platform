@@ -43,14 +43,12 @@ Route::middleware(['auth'])->group(function () {
         return Inertia::render('Instructor/Dashboard');
     })->middleware('role:instructor')->name('instructor.dashboard');
     
-    Route::get('/student/dashboard', function () {
-        return Inertia::render('Student/Dashboard');
-    })->middleware('role:student')->name('student.dashboard');
+   Route::get('/student/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->middleware('auth')->name('student.dashboard');
     
     Route::get('/my-courses', [EnrollmentController::class, 'myCourses'])->name('my-courses');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
-});
+    });
 
 // =========================
 // COURSE ROUTES
@@ -72,10 +70,34 @@ Route::prefix('courses')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::post('/enrollment/{enrollmentId}/progress', [EnrollmentController::class, 'updateProgress'])->name('enrollment.progress');
 });
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/user/enrollments', function () {
+        $enrollments = \App\Models\Enrollment::with(['course.instructor'])
+            ->where('user_id', Auth::id())
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        return response()->json([
+            'data' => $enrollments,
+            'total' => $enrollments->count()
+        ]);
+    });
+});
+
 
 // =========================
 // CHECKOUT & PAYMENT ROUTES
 // =========================
+Route::middleware(['auth'])->group(function () {
+       Route::get('/checkout', function () {
+        return Inertia::render('Checkout/Index');
+    })->name('checkout.index');
+    Route::get('/checkout/{slug}', [CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout/{slug}/process', [CheckoutController::class, 'process'])->name('checkout.process');
+    Route::get('/checkout/callback/{tx_ref}', [CheckoutController::class, 'callback'])->name('checkout.callback');
+    Route::get('/checkout/success/{tx_ref}', [CheckoutController::class, 'success'])->name('checkout.success');
+    Route::get('/checkout/failed/{tx_ref}', [CheckoutController::class, 'failed'])->name('checkout.failed');
+});
 Route::prefix('checkout')->middleware(['auth'])->group(function () {
     Route::get('/{slug}', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/{slug}/process', [CheckoutController::class, 'process'])->name('checkout.process');
@@ -86,6 +108,9 @@ Route::prefix('checkout')->middleware(['auth'])->group(function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/payments', [PaymentController::class, 'index'])->name('student.payments');
+    Route::get('/payment/success', function () {
+    return Inertia::render('Payment/Success');
+})->name('payment.success')->middleware('auth');
 });
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
@@ -107,10 +132,11 @@ Route::middleware(['auth'])->prefix('quizzes')->group(function () {
 // =========================
 // CERTIFICATE ROUTES
 // =========================
-Route::middleware(['auth'])->group(function () {
-    Route::get('/certificate/{id}', [CertificateController::class, 'show'])->name('certificate.show');
-    Route::get('/certificate/{id}/download', [CertificateController::class, 'download'])->name('certificate.download');
-    Route::get('/verify/{number}', [CertificateController::class, 'verify'])->name('certificate.verify');
+
+Route::middleware(['auth'])->prefix('certificate')->group(function () {
+    Route::get('/', [CertificateController::class, 'index'])->name('certificate.index');
+    Route::get('/generate/{courseId}', [CertificateController::class, 'generate'])->name('certificate.generate');
+    Route::get('/download/{id}', [CertificateController::class, 'download'])->name('certificate.download');
 });
 
 // =========================

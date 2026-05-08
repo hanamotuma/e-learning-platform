@@ -200,4 +200,28 @@ class PaymentController extends Controller
         session()->forget('pending_payment');
         return Inertia::render('PaymentCancel');
     }
+
+    public function success($tx_ref)
+{
+    $payment = Payment::where('chapa_tx_ref', $tx_ref)
+        ->with('course')
+        ->firstOrFail();
+    
+    // Create enrollment after successful payment
+    $enrollment = Enrollment::firstOrCreate([
+        'user_id' => $payment->user_id,
+        'course_id' => $payment->course_id,
+    ], [
+        'progress_percentage' => 0,
+        'status' => 'active',
+        'enrolled_at' => now(),
+        'last_accessed_at' => now(),
+        'amount_paid' => $payment->amount,
+    ]);
+    
+    return Inertia::render('Payment/Success', [
+        'payment' => $payment,
+        'course' => $payment->course,
+    ]);
+}
 }

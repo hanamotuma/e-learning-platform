@@ -10,11 +10,13 @@ use App\Models\User;
 use App\Models\Admin;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Http\Requests\Auth\LoginRequest;
+use Illuminate\Http\RedirectResponse;
 
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * LOGIN PAGE (ONE PAGE)
+     * LOGIN PAGE
      */
     public function create(Request $request): Response
     {
@@ -26,55 +28,33 @@ class AuthenticatedSessionController extends Controller
     /**
      * LOGIN (ADMIN + USER TABLE SYSTEM)
      */
-    public function store(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
-
-        /*
-        |--------------------------------------------------------------------------
-        | 🔴 ADMIN LOGIN (NO ROLE)
-        |--------------------------------------------------------------------------
-        */
-        $admin = Admin::where('email', $credentials['email'])->first();
-
-        if ($admin && Hash::check($credentials['password'], $admin->password)) {
-            Auth::guard('admin')->login($admin);
-            $request->session()->regenerate();
-            
-            // Redirect admin to admin dashboard
-            return redirect()->route('admin.dashboard');
-        }
-
-/**
- * USER LOGIN (WITH ROLE)
- */
-$user = User::where('email', $credentials['email'])->first();
-
-if ($user && Hash::check($credentials['password'], $user->password)) {
-    Auth::guard('web')->login($user);
+   public function store(LoginRequest $request): RedirectResponse
+{
+    $request->authenticate();
     $request->session()->regenerate();
 
-    // ROLE BASED REDIRECT (ONLY USERS)
-    if ($user->role === 'student') {
-        return redirect()->route('user.dashboard');
+    // Check for redirect after checkout
+    $redirectAfterCheckout = session('redirect_after_checkout') ?? $request->session()->get('redirect_after_checkout');
+    $redirectAfterLogin = session('redirect_after_login') ?? $request->session()->get('redirect_after_login');
+    
+    if ($redirectAfterCheckout || $redirectAfterLogin === '/checkout') {
+        $request->session()->forget('redirect_after_checkout');
+        $request->session()->forget('redirect_after_login');
+        return redirect('/checkout');
     }
 
-    if ($user->role === 'instructor') {
+    $user = Auth::user();
+    
+    if ($user->hasRole('admin')) {
+        return redirect()->route('admin.dashboard');
+    }
+
+    if ($user->hasRole('instructor')) {
         return redirect()->route('instructor.dashboard');
     }
+
+    return redirect()->intended('/student/dashboard');
 }
-        /*
-        |--------------------------------------------------------------------------
-        | ❌ FAILED LOGIN
-        |--------------------------------------------------------------------------
-        */
-        return back()->withErrors([
-            'email' => 'These credentials do not match our records.',
-        ]);
-    }
 
     /**
      * LOGOUT

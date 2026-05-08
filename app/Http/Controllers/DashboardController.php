@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Enrollment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
@@ -25,9 +26,10 @@ class DashboardController extends Controller
     private function studentDashboard()
     {
         $user = Auth::user();
+        $user->refresh();
         
         $enrolledCourses = Enrollment::with(['course.category', 'course.instructor'])
-            ->where('user_id', $user->user_id)
+            ->where('user_id', $user->id)
             ->where('status', '!=', 'dropped')
             ->get();
         
@@ -41,15 +43,22 @@ class DashboardController extends Controller
         $recentCourses = $enrolledCourses->take(4);
         
         $recommendedCourses = Course::with(['category', 'instructor'])
-            ->where('status', 'published')
-            ->whereNotIn('course_id', $enrolledCourses->pluck('course_id'))
+            ->where('is_published', true)
+            ->whereNotIn('id', $enrolledCourses->pluck('course_id'))
             ->limit(6)
             ->get();
         
-        return inertia('Dashboard/StudentDashboard', [
+        return Inertia::render('Student/Dashboard', [
             'stats' => $stats,
             'enrolledCourses' => $recentCourses,
             'recommendedCourses' => $recommendedCourses,
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name ?? $user->full_name,
+                    'email' => $user->email,
+                ]
+            ]
         ]);
     }
 
@@ -58,7 +67,7 @@ class DashboardController extends Controller
         $user = Auth::user();
         
         $courses = Course::with(['category', 'enrollments'])
-            ->where('instructor_id', $user->user_id)
+            ->where('instructor_id', $user->id)
             ->get();
         
         $stats = [
@@ -69,17 +78,26 @@ class DashboardController extends Controller
             'total_revenue' => $courses->sum(function($course) {
                 return $course->enrollments->where('status', 'completed')->count() * $course->price;
             }),
-            'average_rating' => round($courses->avg('average_rating') ?? 0, 1),
+            'average_rating' => round($courses->avg('rating') ?? 0, 1),
         ];
         
-        return inertia('Dashboard/InstructorDashboard', [
+        return Inertia::render('Instructor/Dashboard', [
             'stats' => $stats,
             'courses' => $courses,
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name ?? $user->full_name,
+                    'email' => $user->email,
+                ]
+            ]
         ]);
     }
 
     private function adminDashboard()
     {
+        $user = Auth::user();
+        
         $stats = [
             'total_users' => \App\Models\User::count(),
             'total_courses' => Course::count(),
@@ -90,10 +108,17 @@ class DashboardController extends Controller
         $recentUsers = \App\Models\User::latest()->limit(10)->get();
         $recentCourses = Course::with('instructor')->latest()->limit(10)->get();
         
-        return inertia('Dashboard/AdminDashboard', [
+        return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
             'recentUsers' => $recentUsers,
             'recentCourses' => $recentCourses,
+            'auth' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name ?? $user->full_name,
+                    'email' => $user->email,
+                ]
+            ]
         ]);
     }
 }

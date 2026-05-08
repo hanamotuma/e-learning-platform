@@ -20,7 +20,7 @@ class RegisteredUserController extends Controller
         return Inertia::render('auth/Register');
     }
 
-    public function store(Request $request): RedirectResponse
+  public function store(Request $request): RedirectResponse
 {
     $request->validate([
         'name' => 'required|string|max:255',
@@ -28,10 +28,22 @@ class RegisteredUserController extends Controller
         'password' => ['required', 'confirmed', Rules\Password::defaults()],
     ]);
 
+    // Generate username from name
+    $baseUsername = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $request->name));
+    $username = $baseUsername;
+    $counter = 1;
+    
+    while (User::where('username', $username)->exists()) {
+        $username = $baseUsername . $counter;
+        $counter++;
+    }
+
     $user = User::create([
-        'name' => $request->name,
+        'full_name' => $request->name,
+        'username' => $username,
         'email' => $request->email,
         'password' => Hash::make($request->password),
+        'is_active' => true,
     ]);
     
     $user->assignRole('student');   
@@ -39,16 +51,24 @@ class RegisteredUserController extends Controller
 
     Auth::login($user);
 
-    // Check if there's a redirect after checkout
-    $redirectAfterCheckout = session('redirect_after_checkout') ?? $request->session()->get('redirect_after_checkout');
-    $redirectAfterLogin = session('redirect_after_login') ?? $request->session()->get('redirect_after_login');
+    // Check session for redirect after checkout
+    $redirectAfterCheckout = session('redirect_after_checkout');
+    $redirectAfterLogin = session('redirect_after_login');
     
+    // Clear the session variables
+    session()->forget('redirect_after_checkout');
+    session()->forget('redirect_after_login');
+    
+    // Redirect to checkout if that was the intent
     if ($redirectAfterCheckout || $redirectAfterLogin === '/checkout') {
-        $request->session()->forget('redirect_after_checkout');
-        $request->session()->forget('redirect_after_login');
+        return redirect('/checkout');
+    }
+    
+    // Check if there's cart data
+    if (session()->has('checkout_cart') || session()->get('redirect_after_checkout')) {
         return redirect('/checkout');
     }
 
-    return redirect(route('student.dashboard', absolute: false));
+    return redirect(route('student.dashboard'));
 }
 }

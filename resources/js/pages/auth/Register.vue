@@ -1,45 +1,60 @@
 <script setup>
-import { ref } from 'vue'
-import { useForm } from '@inertiajs/vue3'
-import { User, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-vue-next'
+import InputError from '@/components/InputError.vue';
+import TextLink from '@/components/TextLink.vue';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import AuthBase from '@/layouts/AuthenticatedLayout.vue';
+import { Head, useForm } from '@inertiajs/vue3';
+import { LoaderCircle, User, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-vue-next';
+import { ref } from 'vue';
 
 const showPassword = ref(false)
 const showPasswordConfirmation = ref(false)
 
+const isFromCheckout = typeof window !== 'undefined' && 
+  (sessionStorage.getItem('redirect_after_checkout') === 'true' || 
+   sessionStorage.getItem('redirect_after_login') === '/checkout');
+
 const form = useForm({
-  username: '',
-  name: '',
-  email: '',
-  password: '',
-  password_confirmation: ''
+  'name': '',
+  'username': '',
+  'email': '',
+  'password': '',
+  'password_confirmation': ''
 })
 
-const submit = () => {
-  form.post(route('register'), {
-    onSuccess: () => {
-      // Check if there's a pending payment in session storage
-      const pendingPayment = sessionStorage.getItem('pendingPayment')
-      if (pendingPayment) {
-        const paymentData = JSON.parse(pendingPayment)
-        // Direct URL construction instead of route() to avoid errors
-        window.location.href = `/payment/page?type=${paymentData.payment_type}&course_id=${paymentData.course_id || ''}`
-        sessionStorage.removeItem('pendingPayment')
-      } else {
-        // Redirect to home if no pending payment
-        window.location.href = '/'
-      }
-    },
-    onError: (errors) => {
-      console.error('Registration errors:', errors)
+watch(() => form.name, (newName) => {
+    if (newName && !form.username) {
+        const generatedUsername = newName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        form.username = generatedUsername;
     }
-  })
-}
+});
+
+const submit = () => {
+    // Preserve checkout intent in session before sending the request
+    if (isFromCheckout) {
+        sessionStorage.setItem('redirect_after_checkout', 'true');
+    }
+    
+    form.post(route('register'), {
+        onSuccess: () => {
+            // Only clear after successful registration
+            if (isFromCheckout) {
+                sessionStorage.removeItem('redirect_after_checkout');
+                sessionStorage.removeItem('redirect_after_login');
+                sessionStorage.removeItem('intended_course_id');
+                sessionStorage.removeItem('checkout_cart');
+            }
+        },
+        onFinish: () => form.reset('password', 'password_confirmation'),
+    });
+};
 </script>
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-50 to-white dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden">
-      <!-- Header -->
       <div class="bg-blue-600 px-6 py-8 text-center">
         <div class="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <span class="text-3xl font-black text-white">L</span>
@@ -48,7 +63,6 @@ const submit = () => {
         <p class="text-blue-100 mt-1">Start your learning journey today</p>
       </div>
 
-      <!-- Display General Errors -->
       <div v-if="form.errors && Object.keys(form.errors).length > 0" class="mx-6 mt-4">
         <div v-for="(error, key) in form.errors" :key="key" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-2">
           <div class="flex items-center space-x-2">
@@ -58,9 +72,7 @@ const submit = () => {
         </div>
       </div>
 
-      <!-- Form -->
       <form @submit.prevent="submit" class="p-6 space-y-4">
-        <!-- Username Field -->
         <div>
           <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Username</label>
           <div class="relative">
@@ -78,7 +90,6 @@ const submit = () => {
           <p v-if="form.errors.username" class="text-red-500 text-sm mt-1">{{ form.errors.username }}</p>
         </div>
 
-        <!-- Full Name Field -->
         <div>
           <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Full Name</label>
           <div class="relative">
@@ -96,7 +107,6 @@ const submit = () => {
           <p v-if="form.errors.name" class="text-red-500 text-sm mt-1">{{ form.errors.name }}</p>
         </div>
 
-        <!-- Email Field -->
         <div>
           <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Email Address</label>
           <div class="relative">
@@ -114,7 +124,6 @@ const submit = () => {
           <p v-if="form.errors.email" class="text-red-500 text-sm mt-1">{{ form.errors.email }}</p>
         </div>
 
-        <!-- Password Field -->
         <div>
           <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Password</label>
           <div class="relative">
@@ -141,7 +150,6 @@ const submit = () => {
           <p class="text-xs text-slate-400 mt-1">Password must be at least 8 characters</p>
         </div>
 
-        <!-- Confirm Password Field -->
         <div>
           <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Confirm Password</label>
           <div class="relative">
