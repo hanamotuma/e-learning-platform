@@ -131,7 +131,7 @@ const featuredCourses = ref([
     category: 'development',
     badge: 'Updated',
     level: 'Intermediate',
-    date: '2026-01-20',
+    date: '2026-02-01',
     inCart: false,
     slug: 'ios-swift-guide'
   },
@@ -533,6 +533,8 @@ const loadCartFromLocalStorage = () => {
   }
 }
 
+
+
 // Cart total
 const cartTotal = computed(() => {
   return cartItems.value.reduce((total, item) => total + item.price, 0)
@@ -717,16 +719,12 @@ const closeCart = () => {
   showCartDropdown.value = false
 }
 
-// ========== UPDATED: Course click handler - Navigates to /course/{id} ==========
+// Course click handler
 const goToCourse = (course) => {
-  // Use the course ID to navigate
   const courseId = course.id
-  
-  // Store for redirect after login if needed
+  console.log('Course clicked:', course.id, course.title)
   sessionStorage.setItem('intended_course_id', courseId)
   sessionStorage.setItem('redirect_after_login', `/course/${courseId}`)
-  
-  // Navigate to course page
   router.get(`/course/${courseId}`)
 }
 
@@ -744,26 +742,22 @@ const browseAllCourses = () => {
 }
 
 // Proceed to checkout from cart
-// FIXED: Proceed to checkout - handles login/register properly
 const proceedToCheckout = () => {
   if (cartItems.value.length === 0) {
     showCartMessage('Your cart is empty')
     return
   }
   
-  // Store cart items for checkout
   sessionStorage.setItem('checkout_cart', JSON.stringify(cartItems.value))
   
   const page = usePage()
   const isLoggedIn = !!page.props.auth?.user
   
   if (!isLoggedIn) {
-    // Not logged in - save intent and redirect to register/signup page
     sessionStorage.setItem('redirect_after_checkout', 'true')
     sessionStorage.setItem('redirect_after_login', '/checkout')
     router.get(route('register'))
   } else {
-    // Logged in - go directly to checkout page
     router.get('/checkout')
   }
 }
@@ -778,6 +772,13 @@ const getStarted = () => {
     router.get(route('register'))
   } else {
     router.get('/courses')
+  }
+}
+
+// Logout function
+const logout = () => {
+  if (confirm('Are you sure you want to logout?')) {
+    router.post(route('logout'))
   }
 }
 
@@ -820,6 +821,11 @@ onMounted(() => {
   initTheme()
   window.addEventListener('scroll', handleScroll)
   loadCartFromLocalStorage()
+  const shouldOpenCart = sessionStorage.getItem('open_cart')
+  if (shouldOpenCart === 'true') {
+    currentPage.value = 'cart'
+    sessionStorage.removeItem('open_cart')
+  }
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -889,7 +895,7 @@ onUnmounted(() => {
               <Search class="absolute right-4 top-2.5 w-5 h-5 text-slate-400" />
             </div>
 
-            <!-- Cart Button with Dropdown -->
+            <!-- Cart Button -->
             <div class="relative cart-button">
               <button @click="openCart" class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
                 <ShoppingCart class="w-5 h-5 text-slate-600 dark:text-slate-300" />
@@ -897,44 +903,46 @@ onUnmounted(() => {
                   {{ cartCount }}
                 </span>
               </button>
+            </div>
 
-              <!-- Cart Dropdown -->
-              <div v-if="showCartDropdown && cartItems.length > 0" class="cart-dropdown absolute right-0 mt-2 w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
-                <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                  <h3 class="font-bold dark:text-white">Your Cart ({{ cartCount }})</h3>
-                  <button @click="showCartDropdown = false" class="text-slate-400 hover:text-slate-600">&times;</button>
-                </div>
-                <div class="max-h-80 overflow-y-auto">
-                  <div v-for="item in cartItems.slice(0, 3)" :key="item.id" class="p-3 border-b border-slate-100 dark:border-slate-700 flex gap-3">
-                    <img :src="item.image" class="w-12 h-12 rounded-lg object-cover" />
-                    <div class="flex-1">
-                      <h4 class="font-medium text-sm dark:text-white line-clamp-1">{{ item.title }}</h4>
-                      <p class="text-blue-600 font-bold text-sm">{{ formatPrice(item.price) }}</p>
-                    </div>
-                    <button @click="removeFromCart(item)" class="text-red-500 hover:text-red-700">✕</button>
-                  </div>
-                </div>
-                <div class="p-4 border-t border-slate-200 dark:border-slate-700">
-                  <div class="flex justify-between mb-3">
-                    <span class="font-bold dark:text-white">Total:</span>
-                    <span class="font-bold text-blue-600">{{ formatPrice(cartTotal) }}</span>
-                  </div>
-                  <button @click="proceedToCheckout" class="w-full py-2 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors">
-                    Checkout →
-                  </button>
-                </div>
+            <!-- Conditionally show Auth buttons OR User menu based on login status -->
+            <template v-if="!$page.props.auth?.user">
+              <!-- Auth Buttons - Show when NOT logged in -->
+              <div class="flex items-center space-x-3">
+                <Link :href="route('login')" class="px-5 py-2 text-slate-600 dark:text-slate-300 font-medium hover:text-blue-600 transition-colors">
+                  Log In
+                </Link>
+                <Link :href="route('register')" class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
+                  Sign Up
+                </Link>
               </div>
-            </div>
-            
-            <!-- Auth Buttons -->
-            <div class="flex items-center space-x-3">
-              <Link :href="route('login')" class="px-5 py-2 text-slate-600 dark:text-slate-300 font-medium hover:text-blue-600 transition-colors">
-                Log In
-              </Link>
-              <Link :href="route('register')" class="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
-                Sign Up
-              </Link>
-            </div>
+            </template>
+
+            <template v-else>
+              <!-- User Menu - Show when logged in -->
+              <div class="flex items-center space-x-4">
+                
+                <!-- Notification Bell -->
+<Link :href="route('notifications.index')" class="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+    <Bell class="w-5 h-5 text-slate-600 dark:text-slate-300" />
+    <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+</Link>
+
+                <!-- Dashboard Button -->
+                <Link :href="route('student.dashboard')" class="flex items-center space-x-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all">
+                  <User class="w-5 h-5 text-blue-600" />
+                  <span class="text-sm font-medium text-blue-600 dark:text-blue-400">Dashboard</span>
+                </Link>
+
+              
+              <!-- Profile Avatar - Only show when logged in -->
+<Link v-if="$page.props.auth?.user" :href="`/profile/${$page.props.auth.user.id}`" class="flex items-center space-x-2">
+    <div class="w-9 h-9 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+        {{ $page.props.auth.user.name?.charAt(0).toUpperCase() || 'U' }}
+    </div>
+</Link>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -951,12 +959,25 @@ onUnmounted(() => {
             {{ item.name }}
           </button>
           <div class="pt-4 space-y-3 border-t border-slate-200 dark:border-slate-700">
-            <Link :href="route('login')" class="block w-full text-center py-3 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700 rounded-xl">
-              Log In
-            </Link>
-            <Link :href="route('register')" class="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl">
-              Sign Up Free
-            </Link>
+            <template v-if="!$page.props.auth?.user">
+              <Link :href="route('login')" class="block w-full text-center py-3 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700 rounded-xl">
+                Log In
+              </Link>
+              <Link :href="route('register')" class="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl">
+                Sign Up Free
+              </Link>
+            </template>
+            <template v-else>
+              <Link :href="route('student.dashboard')" class="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl">
+                Dashboard
+              </Link>
+              <Link :href="route('profile.edit')" class="block w-full text-center py-3 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700 rounded-xl">
+                My Profile
+              </Link>
+              <button @click="logout" class="block w-full text-center py-3 text-red-600 font-medium border border-red-200 rounded-xl">
+                Logout
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -1034,10 +1055,10 @@ onUnmounted(() => {
                   <span class="font-bold dark:text-white">Total</span>
                   <span class="text-2xl font-black text-blue-600">{{ formatPrice(cartTotal) }}</span>
                 </div>
-               <button @click="proceedToCheckout" class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center space-x-2">
-  <CreditCard class="w-4 h-4" />
-  <span>Proceed to Checkout</span>
-</button>
+                <button @click="proceedToCheckout" class="w-full py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center space-x-2">
+                  <CreditCard class="w-4 h-4" />
+                  <span>Proceed to Checkout</span>
+                </button>
                 <div class="flex items-center justify-center space-x-4 mt-4 text-xs text-slate-400">
                   <span class="flex items-center space-x-1"><Shield class="w-3 h-3" /> Secure Payment</span>
                   <span class="flex items-center space-x-1"><Truck class="w-3 h-3" /> Lifetime Access</span>
@@ -1191,11 +1212,9 @@ onUnmounted(() => {
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              <!-- UPDATED: Course card with @click to goToCourse -->
               <div v-for="course in sortedCourses.slice(0, 12)" :key="course.id"
-                @click="goToCourse(course)"
-                class="group bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border border-slate-100 dark:border-slate-700">
-                
+                  @click="goToCourse(course)"
+  class="group bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border border-slate-100 dark:border-slate-700">                
                 <div class="relative overflow-hidden h-48">
                   <img :src="course.image" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <span class="absolute top-3 left-3 px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded-lg">{{ course.badge }}</span>
@@ -1239,10 +1258,10 @@ onUnmounted(() => {
             </div>
 
             <div class="text-center mt-12">
-              <button @click="browseAllCourses" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300">
-                Browse All Courses
-                <ChevronRight class="w-4 h-4 inline ml-1" />
-              </button>
+              <Link :href="route('courses.index')" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-full hover:bg-blue-700 hover:shadow-md transition-all duration-300 inline-flex items-center gap-2">
+    Browse All Courses
+    <ChevronRight class="w-4 h-4" />
+</Link>
             </div>
           </div>
         </section>

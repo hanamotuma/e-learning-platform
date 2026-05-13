@@ -1,13 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
-import { User, Mail, Phone, Camera, Trash2, Save, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-vue-next'
+import { User, Mail, Phone, Camera, Trash2, Save, ArrowLeft, CheckCircle, AlertCircle, Award } from 'lucide-vue-next'
 
 const props = defineProps({
     user: Object
 })
 
-// Initialize form with user data - FIXED: Properly load data
+// Initialize form with user data - keep original values
 const form = useForm({
     name: props.user?.name || '',
     email: props.user?.email || '',
@@ -69,26 +69,28 @@ const removeProfilePicture = () => {
     form.profile_picture = null
 }
 
-// FIXED: Submit form properly
 const submit = () => {
     isSaving.value = true
-    
-    // Clear any previous errors
-    form.clearErrors()
     
     form.put('/profile', {
         preserveScroll: true,
         onSuccess: () => {
             showSuccess.value = true
             isSaving.value = false
-            // Redirect to dashboard after 1.5 seconds
             setTimeout(() => {
+                showSuccess.value = false
                 router.get('/student/dashboard')
             }, 1500)
         },
         onError: (errors) => {
-            console.log('Errors:', errors)
-            errorMessage.value = Object.values(errors).join(', ')
+            // Show specific error messages
+            if (errors.username) {
+                errorMessage.value = 'Username already taken. Please choose another.'
+            } else if (errors.email) {
+                errorMessage.value = 'Email already taken. Please use another email.'
+            } else {
+                errorMessage.value = Object.values(errors).join(', ')
+            }
             showError.value = true
             isSaving.value = false
             setTimeout(() => showError.value = false, 3000)
@@ -110,9 +112,6 @@ onMounted(() => {
     if (savedTheme === 'dark') {
         document.documentElement.classList.add('dark')
     }
-    
-    // Debug: log the user data
-    console.log('User data received:', props.user)
 })
 </script>
 
@@ -121,12 +120,12 @@ onMounted(() => {
     
     <div class="min-h-screen bg-gray-50 dark:bg-slate-950">
         <!-- Header -->
-        <div class="bg-gradient-to-r from-blue-600 to-blue-500 text-white">
-            <div class="max-w-4xl mx-auto px-4 py-8 lg:py-12">
+        <div class="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-8">
+            <div class="max-w-4xl mx-auto px-4">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-2xl lg:text-3xl font-black">Profile Settings</h1>
-                        <p class="text-sm opacity-90 mt-1">Manage your personal information</p>
+                        <h1 class="text-2xl lg:text-3xl font-black">Edit Profile</h1>
+                        <p class="text-sm opacity-90 mt-1">Update your personal information</p>
                     </div>
                     <button @click="goBack" class="px-4 py-2 bg-white/20 rounded-xl hover:bg-white/30 transition-colors text-sm font-medium flex items-center gap-2">
                         <ArrowLeft class="w-4 h-4" />
@@ -160,34 +159,19 @@ onMounted(() => {
 
         <!-- Main Content -->
         <div class="max-w-4xl mx-auto px-4 py-8">
-            <!-- Profile Picture Section -->
-            <div class="bg-white dark:bg-slate-900 rounded-2xl border p-6 mb-6">
-                <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
-                    <Camera class="w-5 h-5 text-blue-600" />
-                    Profile Picture
-                </h2>
-                
-                <div class="flex flex-col md:flex-row items-center gap-6">
-                    <div class="relative">
-                        <div v-if="profilePreview" class="w-28 h-28 rounded-2xl overflow-hidden bg-slate-100 ring-4 ring-blue-100 dark:ring-blue-900/30">
-                            <img :src="profilePreview" class="w-full h-full object-cover" />
-                        </div>
-                        <div v-else class="w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center ring-4 ring-blue-100 dark:ring-blue-900/30">
-                            <span class="text-4xl font-bold text-white">{{ userInitials }}</span>
-                        </div>
-                        <label class="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors shadow-lg">
-                            <Camera class="w-4 h-4 text-white" />
-                            <input type="file" accept="image/*" class="hidden" @change="onFileChange" />
-                        </label>
-                        <button v-if="profilePreview" @click="removeProfilePicture" class="absolute -top-2 -right-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg">
-                            <Trash2 class="w-4 h-4 text-white" />
-                        </button>
+            <!-- Profile Header with Initials -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border p-6 mb-6 text-center">
+                <div class="relative inline-block">
+                    <div class="w-24 h-24 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center mx-auto shadow-lg">
+                        <span class="text-3xl font-bold text-white">{{ userInitials }}</span>
                     </div>
-                    <div class="flex-1 text-center md:text-left">
-                        <p class="text-sm text-slate-500">Upload a new profile photo</p>
-                        <p class="text-xs text-slate-400 mt-1">JPG, PNG, GIF or WEBP. Max 5MB.</p>
-                    </div>
+                    <label class="absolute bottom-0 right-0 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors shadow-lg">
+                        <Camera class="w-4 h-4 text-white" />
+                        <input type="file" accept="image/*" class="hidden" @change="onFileChange" />
+                    </label>
                 </div>
+                <h2 class="text-xl font-bold dark:text-white mt-3">{{ form.name }}</h2>
+                <p class="text-sm text-slate-500">{{ form.email }}</p>
             </div>
 
             <!-- Profile Form -->
@@ -200,63 +184,36 @@ onMounted(() => {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
-                            <label class="block text-sm font-medium mb-1">Full Name <span class="text-red-500">*</span></label>
-                            <input 
-                                type="text" 
-                                v-model="form.name" 
-                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500" 
-                                required 
-                            />
-                            <p v-if="form.errors.name" class="text-xs text-red-500 mt-1">{{ form.errors.name }}</p>
+                            <label class="block text-sm font-medium mb-1">Full Name</label>
+                            <input type="text" v-model="form.name" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500" />
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium mb-1">Username <span class="text-red-500">*</span></label>
-                            <input 
-                                type="text" 
-                                v-model="form.username" 
-                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500" 
-                                required 
-                            />
-                            <p v-if="form.errors.username" class="text-xs text-red-500 mt-1">{{ form.errors.username }}</p>
+                            <label class="block text-sm font-medium mb-1">Username</label>
+                            <input type="text" v-model="form.username" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500" />
+                            <p class="text-xs text-slate-400 mt-1">Choose a unique username</p>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium mb-1">Email Address <span class="text-red-500">*</span></label>
-                            <input 
-                                type="email" 
-                                v-model="form.email" 
-                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500" 
-                                required 
-                            />
-                            <p v-if="form.errors.email" class="text-xs text-red-500 mt-1">{{ form.errors.email }}</p>
+                            <label class="block text-sm font-medium mb-1">Email Address</label>
+                            <input type="email" v-model="form.email" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500" />
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium mb-1">Phone Number</label>
-                            <input 
-                                type="tel" 
-                                v-model="form.phone" 
-                                placeholder="09XXXXXXXX" 
-                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500" 
-                            />
+                            <input type="tel" v-model="form.phone" placeholder="09XXXXXXXX" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500" />
                         </div>
 
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium mb-1">Bio / About Me</label>
-                            <textarea 
-                                v-model="form.bio" 
-                                rows="3" 
-                                class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500 resize-none" 
-                                placeholder="Tell us about yourself..."
-                            ></textarea>
+                            <textarea v-model="form.bio" rows="3" class="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border rounded-xl focus:ring-2 focus:ring-blue-500 resize-none" placeholder="Tell us about yourself..."></textarea>
                         </div>
                     </div>
                 </div>
 
                 <div class="bg-white dark:bg-slate-900 rounded-2xl border p-6">
                     <h2 class="text-lg font-bold mb-4 flex items-center gap-2">
-                        <User class="w-5 h-5 text-blue-600" />
+                        <Award class="w-5 h-5 text-blue-600" />
                         Educational Information
                     </h2>
                     

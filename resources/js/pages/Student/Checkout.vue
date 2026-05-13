@@ -50,7 +50,7 @@
 <script setup>
 import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import AuthenticatedLayout from '@/layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
   cart: Array,

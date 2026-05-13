@@ -10,6 +10,49 @@ const props = defineProps({
   }
 })
 
+const handleEnroll = () => {
+  if (!authUser.value) {
+    sessionStorage.setItem('intended_course_id', props.course.id)
+    sessionStorage.setItem('redirect_after_login', `/checkout/${props.course.id}`)
+    sessionStorage.setItem('checkout_course', JSON.stringify({
+      id: props.course.id,
+      title: props.course.title,
+      price: props.course.price,
+      image: props.course.image,
+      instructor: props.course.instructor
+    }))
+    router.get('/register')
+    return
+  }
+  
+  if (props.isEnrolled) {
+    router.get(`/course/${props.course.id}/learn`)
+    return
+  }
+  
+  // Store course for checkout
+  sessionStorage.setItem('checkout_course', JSON.stringify({
+    id: props.course.id,
+    title: props.course.title,
+    price: props.course.price,
+    image: props.course.image,
+    instructor: props.course.instructor
+  }))
+  
+  // Create a single item cart
+  const singleCart = [{
+    id: props.course.id,
+    title: props.course.title,
+    price: props.course.price,
+    image: props.course.image,
+    instructor: props.course.instructor
+  }]
+  sessionStorage.setItem('checkout_cart', JSON.stringify(singleCart))
+  
+  // Redirect to checkout page
+  router.get(`/checkout/${props.course.id}`)
+}
+
 /* ---------------- PROGRESS MAP ---------------- */
 const progressMap = computed(() => {
   const map = {}

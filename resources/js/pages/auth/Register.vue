@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import AuthBase from '@/layouts/AuthenticatedLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { LoaderCircle, User, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';  // ADDED: watch import
 
 const showPassword = ref(false)
 const showPasswordConfirmation = ref(false)

@@ -93,6 +93,14 @@ class CheckoutController extends Controller
             return redirect()->back()->with('error', 'Payment service error: ' . $e->getMessage());
         }
     }
+
+    public function show(Course $course)
+    {
+        return Inertia::render('Checkout/Index', [
+            'course' => $course,
+          
+        ]);
+    }
     
     public function callback($tx_ref)
     {

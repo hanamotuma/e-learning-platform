@@ -6,7 +6,6 @@ import axios from 'axios'
 
 const paymentInfo = ref(null)
 const isSaving = ref(true)
-const enrollmentSuccess = ref(false)
 
 onMounted(async () => {
   const savedPayment = localStorage.getItem('last_payment')
@@ -17,18 +16,18 @@ onMounted(async () => {
     if (paymentInfo.value && paymentInfo.value.items) {
       for (const course of paymentInfo.value.items) {
         try {
-          // Send enrollment request to backend
-          const response = await axios.post(`/api/courses/${course.id}/enroll`, {
+          console.log('Saving enrollment for course:', course.id, course.title)
+          const response = await axios.post('/api/enroll', {
             course_id: course.id,
+            amount: course.price,
             payment_method: paymentInfo.value.paymentMethod,
-            amount: paymentInfo.value.amount
+            transaction_id: paymentInfo.value.transactionId
           })
-          console.log(`Successfully enrolled in ${course.title}`)
+          console.log('Enrollment response:', response.data)
         } catch (error) {
-          console.error('Enrollment error:', error)
+          console.error('Enrollment error:', error.response?.data || error.message)
         }
       }
-      enrollmentSuccess.value = true
     }
   }
   
@@ -39,7 +38,8 @@ onMounted(async () => {
   localStorage.removeItem('savedCart')
   sessionStorage.removeItem('checkout_cart')
   
-  // Set a flag that enrollment happened
+  // Set flags for dashboard refresh
+  sessionStorage.setItem('refresh_dashboard', 'true')
   sessionStorage.setItem('enrollment_completed', 'true')
 })
 
@@ -58,7 +58,6 @@ const formatDate = (date) => {
 }
 
 const goToDashboard = () => {
-  // Set flag before redirecting
   sessionStorage.setItem('refresh_dashboard', 'true')
   router.get('/student/dashboard')
 }

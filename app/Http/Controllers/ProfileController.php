@@ -28,6 +28,38 @@ class ProfileController extends Controller
         ]);
     }
 
+    public function publicProfile($id)
+{
+    $user = \App\Models\User::findOrFail($id);
+    
+    $enrolledCourses = \App\Models\Enrollment::with(['course.instructor'])
+        ->where('user_id', $id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+    
+    $certificates = \App\Models\Certificate::with(['course'])
+        ->where('user_id', $id)
+        ->orderBy('created_at', 'desc')
+        ->get();
+    
+    return Inertia::render('Profile/Public', [
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->full_name ?? $user->name,
+            'username' => $user->username,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'bio' => $user->bio,
+            'interests' => $user->interests,
+            'education' => $user->education,
+            'created_at' => $user->created_at,
+            'profile_picture_url' => $user->profile_picture_url,
+        ],
+        'enrolledCourses' => $enrolledCourses,
+        'certificates' => $certificates,
+    ]);
+}
+
     public function update(Request $request)
     {
         $user = Auth::user();
@@ -43,6 +75,7 @@ class ProfileController extends Controller
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
         
+        // Update user data
         $user->full_name = $validated['name'];
         $user->username = $validated['username'];
         $user->email = $validated['email'];

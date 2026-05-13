@@ -14,17 +14,18 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\CourseController as AdminCourseController;
+use App\Http\Controllers\Instructor\InstructorDashboardController;
 use App\Http\Controllers\Instructor\InstructorCourseController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // =========================
 // HOME
 // =========================
-Route::get('/', function () {
-    return Inertia::render('Home');
-})->name('home');
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // =========================
 // COURSE SHOW ROUTE (MUST BE BEFORE OTHER COURSE ROUTES)
@@ -39,16 +40,15 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('role:admin')
         ->name('admin.dashboard');
     
-    Route::get('/instructor/dashboard', function () {
-        return Inertia::render('Instructor/Dashboard');
-    })->middleware('role:instructor')->name('instructor.dashboard');
-    
-   Route::get('/student/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->middleware('auth')->name('student.dashboard');
+    Route::get('/student/dashboard', [DashboardController::class, 'index'])->middleware('auth')->name('student.dashboard');
     
     Route::get('/my-courses', [EnrollmentController::class, 'myCourses'])->name('my-courses');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    });
+    Route::get('/profile/{id}', [ProfileController::class, 'publicProfile'])->name('profile.public');
+});
+
+Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
 
 // =========================
 // COURSE ROUTES
@@ -70,6 +70,10 @@ Route::prefix('courses')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::post('/enrollment/{enrollmentId}/progress', [EnrollmentController::class, 'updateProgress'])->name('enrollment.progress');
 });
+
+// =========================
+// API ROUTES FOR ENROLLMENTS
+// =========================
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/user/enrollments', function () {
         $enrollments = \App\Models\Enrollment::with(['course.instructor'])
@@ -84,35 +88,30 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 });
 
-
 // =========================
 // CHECKOUT & PAYMENT ROUTES
 // =========================
 Route::middleware(['auth'])->group(function () {
-       Route::get('/checkout', function () {
+    Route::get('/checkout', function () {
         return Inertia::render('Checkout/Index');
     })->name('checkout.index');
-    Route::get('/checkout/{slug}', [CheckoutController::class, 'index'])->name('checkout.index');
+    
+    Route::get('/checkout/{course}', [CheckoutController::class, 'show'])->name('checkout.show');
+    Route::get('/checkout/{slug}', [CheckoutController::class, 'index'])->name('checkout.single');
     Route::post('/checkout/{slug}/process', [CheckoutController::class, 'process'])->name('checkout.process');
     Route::get('/checkout/callback/{tx_ref}', [CheckoutController::class, 'callback'])->name('checkout.callback');
     Route::get('/checkout/success/{tx_ref}', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::get('/checkout/failed/{tx_ref}', [CheckoutController::class, 'failed'])->name('checkout.failed');
-});
-Route::prefix('checkout')->middleware(['auth'])->group(function () {
-    Route::get('/{slug}', [CheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/{slug}/process', [CheckoutController::class, 'process'])->name('checkout.process');
-    Route::get('/callback/{tx_ref}', [CheckoutController::class, 'callback'])->name('checkout.callback');
-    Route::get('/success/{tx_ref}', [CheckoutController::class, 'success'])->name('checkout.success');
-    Route::get('/failed/{tx_ref}', [CheckoutController::class, 'failed'])->name('checkout.failed');
-});
-
-Route::middleware(['auth'])->group(function () {
+    
     Route::get('/payments', [PaymentController::class, 'index'])->name('student.payments');
     Route::get('/payment/success', function () {
-    return Inertia::render('Payment/Success');
-})->name('payment.success')->middleware('auth');
+        return Inertia::render('Payment/Success');
+    })->name('payment.success');
 });
 
+// =========================
+// ADMIN PAYMENT ROUTES
+// =========================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/payments', [PaymentController::class, 'adminIndex'])->name('admin.payments');
 });
@@ -132,7 +131,6 @@ Route::middleware(['auth'])->prefix('quizzes')->group(function () {
 // =========================
 // CERTIFICATE ROUTES
 // =========================
-
 Route::middleware(['auth'])->prefix('certificate')->group(function () {
     Route::get('/', [CertificateController::class, 'index'])->name('certificate.index');
     Route::get('/generate/{courseId}', [CertificateController::class, 'generate'])->name('certificate.generate');
@@ -140,15 +138,26 @@ Route::middleware(['auth'])->prefix('certificate')->group(function () {
 });
 
 // =========================
-// INSTRUCTOR COURSE MANAGEMENT
+// INSTRUCTOR DASHBOARD & COURSE MANAGEMENT - FIXED
 // =========================
 Route::middleware(['auth', 'role:instructor'])->prefix('instructor')->group(function () {
+    // Dashboard
+    Route::get('/dashboard', [InstructorDashboardController::class, 'index'])->name('instructor.dashboard');
+    
+    // Course Management
     Route::get('/courses', [InstructorCourseController::class, 'index'])->name('instructor.courses.index');
     Route::get('/courses/create', [InstructorCourseController::class, 'create'])->name('instructor.courses.create');
     Route::post('/courses', [InstructorCourseController::class, 'store'])->name('instructor.courses.store');
     Route::get('/courses/{id}/edit', [InstructorCourseController::class, 'edit'])->name('instructor.courses.edit');
     Route::put('/courses/{id}', [InstructorCourseController::class, 'update'])->name('instructor.courses.update');
+    Route::delete('/courses/{id}', [InstructorCourseController::class, 'destroy'])->name('instructor.courses.destroy');
     Route::post('/courses/{id}/publish', [InstructorCourseController::class, 'publish'])->name('instructor.courses.publish');
+    
+    // Students
+    Route::get('/students', [InstructorDashboardController::class, 'students'])->name('instructor.students');
+    
+    // Earnings
+    Route::get('/earnings', [InstructorDashboardController::class, 'earnings'])->name('instructor.earnings');
     
     // Sections
     Route::post('/courses/{courseId}/sections', [InstructorCourseController::class, 'addSection'])->name('instructor.sections.store');

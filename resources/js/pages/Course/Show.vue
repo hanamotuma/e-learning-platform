@@ -5,8 +5,7 @@ import {
   Star, Users, Clock, Play, CheckCircle, Video, Download, 
   Award, MessageCircle, ShoppingCart, CreditCard, ChevronLeft, 
   Heart, BookOpen, Code, Palette, Briefcase, Megaphone, Database,
-  Globe, Shield, Headphones, Zap, Target, BarChart3, Trash2, X,
-  ChevronDown
+  Globe, Shield, Headphones, Zap, Target, BarChart3, ChevronDown
 } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -25,37 +24,33 @@ const authUser = computed(() => page.props.auth?.user)
 const activeTab = ref('overview')
 const isEnrolling = ref(false)
 const isDarkMode = ref(false)
-const isAddingToWishlist = ref(false)
 const isInWishlist = ref(false)
 const expandedSections = ref([])
 
-// USE THE UNIQUE CURRICULUM FROM CONTROLLER
-const sections = computed(() => {
-  console.log('Curriculum received:', props.courseCurriculum)
-  return props.courseCurriculum || []
-})
+// Use the passed curriculum from controller
+const sections = computed(() => props.courseCurriculum || props.course?.sections || [])
 
-// USE THE UNIQUE REVIEWS FROM CONTROLLER
-const reviews = computed(() => {
-  console.log('Reviews received:', props.courseReviews)
-  return props.courseReviews || []
-})
+// Use the passed reviews from controller
+const reviews = computed(() => props.courseReviews || props.course?.reviews || [])
 
-// Check if course is in wishlist/cart
+// Check if in wishlist
 onMounted(() => {
-  initTheme()
   const savedCart = localStorage.getItem('savedCart')
   if (savedCart) {
     const cartIds = JSON.parse(savedCart)
     isInWishlist.value = cartIds.includes(props.course?.id)
   }
+  
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark') {
+    isDarkMode.value = true
+    document.documentElement.classList.add('dark')
+  }
+  
   // Expand first section by default
-  if (sections.value.length > 0 && !expandedSections.value.includes(sections.value[0].id)) {
+  if (sections.value.length > 0 && !expandedSections.value.includes(sections.value[0]?.id)) {
     expandedSections.value.push(sections.value[0].id)
   }
-  console.log('Course ID:', props.course?.id)
-  console.log('Curriculum sections count:', sections.value.length)
-  console.log('Reviews count:', reviews.value.length)
 })
 
 const toggleSection = (sectionId) => {
@@ -64,15 +59,6 @@ const toggleSection = (sectionId) => {
     expandedSections.value.splice(index, 1)
   } else {
     expandedSections.value.push(sectionId)
-  }
-}
-
-// Theme
-const initTheme = () => {
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark') {
-    isDarkMode.value = true
-    document.documentElement.classList.add('dark')
   }
 }
 
@@ -88,21 +74,26 @@ const formatNumber = (num) => {
   return num.toString()
 }
 
-// Back button - go to home page
 const goBack = () => {
   router.get('/')
 }
 
-// Enroll button with payment and signup flow
 const handleEnroll = () => {
+  console.log('Enroll button clicked:', props.course.id)
   if (!authUser.value) {
     sessionStorage.setItem('intended_course_id', props.course.id)
-    sessionStorage.setItem('redirect_after_enroll', 'true')
     sessionStorage.setItem('redirect_after_login', `/course/${props.course.id}`)
+    sessionStorage.setItem('checkout_course', JSON.stringify({
+      id: props.course.id,
+      title: props.course.title,
+      price: props.course.price,
+      image: props.course.image,
+      instructor: props.course.instructor
+    }))
     router.get(route('register'))
     return
   }
-  
+  //if the user is already enrolled, redirect to course content
   if (props.isEnrolled) {
     router.get(`/course/${props.course.id}/learn`)
     return
@@ -110,56 +101,44 @@ const handleEnroll = () => {
   
   isEnrolling.value = true
   
-  setTimeout(() => {
-    sessionStorage.setItem('checkout_course', JSON.stringify({
-      id: props.course.id,
-      title: props.course.title,
-      price: props.course.price
-    }))
-    router.get(`/checkout/${props.course.id}`)
-    isEnrolling.value = false
-  }, 500)
+  sessionStorage.setItem('checkout_course', JSON.stringify({
+    id: props.course.id,
+    title: props.course.title,
+    price: props.course.price,
+    image: props.course.image,
+    instructor: props.course.instructor
+  }))
+  
+  const singleCart = [{
+    id: props.course.id,
+    title: props.course.title,
+    price: props.course.price,
+    image: props.course.image,
+    instructor: props.course.instructor
+  }]
+  sessionStorage.setItem('checkout_cart', JSON.stringify(singleCart))
+  window.location.href = `/checkout/${props.course.id}`
+  isEnrolling.value = false
 }
 
-// Add to Wishlist / Cart functionality
 const addToWishlist = () => {
+  const savedCart = localStorage.getItem('savedCart')
+  let cartIds = savedCart ? JSON.parse(savedCart) : []
+  
   if (isInWishlist.value) {
-    const savedCart = localStorage.getItem('savedCart')
-    if (savedCart) {
-      let cartIds = JSON.parse(savedCart)
-      cartIds = cartIds.filter(id => id !== props.course.id)
-      localStorage.setItem('savedCart', JSON.stringify(cartIds))
-      isInWishlist.value = false
-      showToastMessage('Removed from wishlist')
-    }
+    cartIds = cartIds.filter(id => id !== props.course.id)
+    isInWishlist.value = false
   } else {
-    const savedCart = localStorage.getItem('savedCart')
-    let cartIds = savedCart ? JSON.parse(savedCart) : []
-    if (!cartIds.includes(props.course.id)) {
-      cartIds.push(props.course.id)
-      localStorage.setItem('savedCart', JSON.stringify(cartIds))
-      isInWishlist.value = true
-      showToastMessage('Added to wishlist!')
-    }
+    cartIds.push(props.course.id)
+    isInWishlist.value = true
   }
+  localStorage.setItem('savedCart', JSON.stringify(cartIds))
 }
 
-// Toast notification
-const toastMessage = ref('')
-const showToast = ref(false)
-
-const showToastMessage = (message) => {
-  toastMessage.value = message
-  showToast.value = true
-  setTimeout(() => {
-    showToast.value = false
-  }, 2000)
-}
-
-// Get objectives
 const objectives = computed(() => {
   if (props.course?.what_you_will_learn) {
-    return props.course.what_you_will_learn.split('\n')
+    const objectivesList = props.course.what_you_will_learn.split('\n')
+    return objectivesList.filter(obj => obj.trim().length > 0)
   }
   return [
     'Master core concepts of ' + (props.course?.title || 'this course'),
@@ -171,23 +150,27 @@ const objectives = computed(() => {
   ]
 })
 
-// Calculate average rating from reviews
 const averageRating = computed(() => {
-  if (reviews.value.length === 0) return props.course?.rating || 4.8
-  const sum = reviews.value.reduce((acc, r) => acc + r.rating, 0)
-  return (sum / reviews.value.length).toFixed(1)
+  if (reviews.value.length > 0) {
+    const sum = reviews.value.reduce((acc, r) => acc + r.rating, 0)
+    return (sum / reviews.value.length).toFixed(1)
+  }
+  return props.course?.rating || 4.8
 })
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  return new Date(date).toLocaleDateString('en-US', { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  })
 }
 
-// Get avatar display
 const getAvatarDisplay = (review) => {
-  if (review.user.avatarType === 'cat') {
-    return review.user.avatar
+  if (review.user?.avatarType === 'cat') {
+    return review.user.avatar || '🐱'
   }
-  return review.user.avatar
+  return review.user?.name?.charAt(0).toUpperCase() || 'U'
 }
 
 // Calculate total lectures
@@ -200,12 +183,7 @@ const totalLectures = computed(() => {
   <Head :title="(course?.title || 'Course') + ' | LearnHub'" />
   
   <div class="min-h-screen bg-white dark:bg-slate-900">
-    <!-- Toast Notification -->
-    <div v-if="showToast" class="fixed top-24 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg animate-fade-in">
-      {{ toastMessage }}
-    </div>
-
-    <!-- Back button -->
+    <!-- Back Button -->
     <div class="max-w-7xl mx-auto px-4 pt-24 pb-4">
       <button @click="goBack" class="flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-blue-600 transition-colors">
         <ChevronLeft class="w-5 h-5" />
@@ -241,10 +219,10 @@ const totalLectures = computed(() => {
             </div>
             <div class="mt-4 flex items-center gap-2">
               <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-                {{ (course?.instructor || 'I')[0] }}
+                {{ (course?.instructor || 'I').charAt(0) }}
               </div>
               <span class="text-sm">Created by</span>
-              <span class="font-semibold">{{ course?.instructor }}</span>
+              <span class="font-semibold">{{ course?.instructor || 'Expert Instructor' }}</span>
             </div>
           </div>
           
@@ -274,7 +252,7 @@ const totalLectures = computed(() => {
                   :class="isInWishlist ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border-blue-300' : 'text-slate-700 dark:text-slate-300'"
                 >
                   <Heart class="w-4 h-4" :class="isInWishlist ? 'fill-blue-600 text-blue-600' : ''" />
-                  {{ isInWishlist ? 'Added to Wishlist ✓' : 'Add to Wishlist' }}
+                  {{ isInWishlist ? 'Added to Wishlist' : 'Add to Wishlist' }}
                 </button>
                 
                 <div class="mt-4 text-center text-sm text-slate-500">
@@ -309,7 +287,7 @@ const totalLectures = computed(() => {
       <div class="grid lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2">
           <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 mb-6">
-            <h2 class="text-xl font-bold mb-4 dark:text-white">What you'll learn</h2>
+            <h2 class="text-2xl font-bold mb-4 dark:text-white">What you'll learn</h2>
             <div class="grid md:grid-cols-2 gap-3">
               <div v-for="objective in objectives.slice(0, 6)" :key="objective" class="flex items-start gap-2">
                 <CheckCircle class="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
@@ -317,15 +295,13 @@ const totalLectures = computed(() => {
               </div>
             </div>
           </div>
-          
           <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6">
-            <h2 class="text-xl font-bold mb-4 dark:text-white">Description</h2>
+            <h2 class="text-2xl font-bold mb-4 dark:text-white">Description</h2>
             <p class="dark:text-slate-300 leading-relaxed">{{ course?.description }}</p>
           </div>
         </div>
-        
         <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 h-fit">
-          <h3 class="font-bold mb-4 dark:text-white">This course includes:</h3>
+          <h3 class="font-bold mb-3 dark:text-white">This course includes:</h3>
           <ul class="space-y-3 text-sm">
             <li class="flex items-center gap-2 dark:text-slate-300"><Video class="w-4 h-4 text-blue-600" /> {{ course?.hours || 40 }} hours on-demand video</li>
             <li class="flex items-center gap-2 dark:text-slate-300"><Download class="w-4 h-4 text-blue-600" /> Downloadable resources</li>
@@ -341,7 +317,7 @@ const totalLectures = computed(() => {
     <div v-if="activeTab === 'curriculum'" class="max-w-7xl mx-auto px-4 py-8">
       <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold dark:text-white">Course Content</h2>
+          <h2 class="text-2xl font-bold dark:text-white">Course Content</h2>
           <span class="text-sm text-slate-500">{{ totalLectures }} lectures total</span>
         </div>
         <div v-if="sections.length === 0" class="text-center py-8 text-slate-500">
@@ -362,7 +338,7 @@ const totalLectures = computed(() => {
                   <Play class="w-4 h-4 text-blue-500" />
                   <span class="text-sm dark:text-slate-300">{{ lesson.title }}</span>
                 </div>
-                <span class="text-xs text-slate-500">{{ lesson.duration }}</span>
+                <span class="text-xs text-slate-500">{{ lesson.duration || '10 min' }}</span>
               </div>
             </div>
           </div>
@@ -383,7 +359,7 @@ const totalLectures = computed(() => {
             <div class="text-sm text-slate-500 mt-1">{{ reviews.length }} reviews</div>
           </div>
           <div class="flex-1">
-            <div class="space-y-2">
+            <div v-if="reviews.length > 0" class="space-y-2">
               <div v-for="star in [5,4,3,2,1]" :key="star" class="flex items-center gap-3">
                 <span class="text-sm w-8">{{ star }}★</span>
                 <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -392,21 +368,21 @@ const totalLectures = computed(() => {
                 <span class="text-sm text-slate-500 w-12">{{ reviews.filter(r => r.rating === star).length }}</span>
               </div>
             </div>
+            <div v-else class="text-center py-4 text-slate-500">No reviews yet</div>
           </div>
         </div>
 
         <!-- Reviews List -->
-        <div class="space-y-6">
+        <div v-if="reviews.length > 0" class="space-y-6">
           <div v-for="review in reviews" :key="review.id" class="border-b dark:border-slate-700 pb-5 last:border-0">
             <div class="flex items-start gap-4">
-              <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold"
-                :class="review.user.avatarType === 'cat' ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'">
+              <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                 {{ getAvatarDisplay(review) }}
               </div>
               <div class="flex-1">
                 <div class="flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <p class="font-bold dark:text-white">{{ review.user.name }}</p>
+                    <p class="font-bold dark:text-white">{{ review.user?.name || 'Anonymous' }}</p>
                     <div class="flex items-center gap-1 text-yellow-400 text-sm mt-1">
                       <span v-for="i in review.rating" :key="i">★</span>
                       <span v-for="i in (5 - review.rating)" :key="i" class="text-slate-300">★</span>
@@ -417,12 +393,18 @@ const totalLectures = computed(() => {
                 <p class="text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">{{ review.comment }}</p>
                 <div class="flex items-center gap-4 mt-3">
                   <button class="text-xs text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1">
-                    👍 Helpful ({{ review.helpful }})
+                    👍 Helpful ({{ review.helpful || 0 }})
                   </button>
                 </div>
               </div>
             </div>
           </div>
+        </div>
+        
+        <div v-else class="text-center py-12">
+          <div class="text-5xl mb-4">⭐</div>
+          <h3 class="text-lg font-semibold dark:text-white mb-2">No reviews yet</h3>
+          <p class="text-slate-500">Be the first to review this course!</p>
         </div>
       </div>
     </div>
@@ -440,21 +422,6 @@ const totalLectures = computed(() => {
   }
   to {
     transform: rotate(360deg);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 </style>
