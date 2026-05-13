@@ -3,15 +3,12 @@ import { ref, computed, onMounted } from 'vue'
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { 
   Star, Users, Clock, Play, CheckCircle, Video, Download, 
-  Award, MessageCircle, ShoppingCart, CreditCard, ChevronLeft, 
-  Heart, BookOpen, Code, Palette, Briefcase, Megaphone, Database,
-  Globe, Shield, Headphones, Zap, Target, BarChart3, ChevronDown
+  Award, MessageCircle, CreditCard, ChevronLeft, 
+  Heart, Shield, ChevronDown
 } from 'lucide-vue-next'
 
 const props = defineProps({
   course: Object,
-  courseCurriculum: Array,
-  courseReviews: Array,
   isEnrolled: Boolean,
   enrollment: Object,
   progress: Object,
@@ -27,18 +24,21 @@ const isDarkMode = ref(false)
 const isInWishlist = ref(false)
 const expandedSections = ref([])
 
-// Use the passed curriculum from controller
-const sections = computed(() => props.courseCurriculum || props.course?.sections || [])
+// Course data
+const course = ref(props.course || {})
 
-// Use the passed reviews from controller
-const reviews = computed(() => props.courseReviews || props.course?.reviews || [])
+// Sections for curriculum
+const sections = ref(props.course?.sections || [])
+
+// Reviews
+const reviews = ref(props.course?.reviews || [])
 
 // Check if in wishlist
 onMounted(() => {
   const savedCart = localStorage.getItem('savedCart')
   if (savedCart) {
     const cartIds = JSON.parse(savedCart)
-    isInWishlist.value = cartIds.includes(props.course?.id)
+    isInWishlist.value = cartIds.includes(course.value?.id)
   }
   
   const savedTheme = localStorage.getItem('theme')
@@ -79,35 +79,38 @@ const goBack = () => {
 }
 
 const handleEnroll = () => {
-  console.log('Enroll button clicked:', props.course.id)
+  const courseId = props.course.id
+  console.log('Enrollclicked for course:', courseId)
   if (!authUser.value) {
-    sessionStorage.setItem('intended_course_id', props.course.id)
-    sessionStorage.setItem('redirect_after_login', `/course/${props.course.id}`)
+    sessionStorage.setItem('intended_course_id', course.value.id)
+    sessionStorage.setItem('redirect_after_login', `/course/${course.value.id}`)
     sessionStorage.setItem('checkout_course', JSON.stringify({
-      id: props.course.id,
+      id:course.id,
       title: props.course.title,
       price: props.course.price,
       image: props.course.image,
       instructor: props.course.instructor
     }))
-    router.get(route('register'))
+    router.get('/register')
     return
   }
-  //if the user is already enrolled, redirect to course content
+  
   if (props.isEnrolled) {
-    router.get(`/course/${props.course.id}/learn`)
+    router.get(`/student/dashboard`)
     return
   }
   
   isEnrolling.value = true
   
   sessionStorage.setItem('checkout_course', JSON.stringify({
-    id: props.course.id,
+    id: course.id,
     title: props.course.title,
     price: props.course.price,
     image: props.course.image,
     instructor: props.course.instructor
   }))
+  router.get(`/checkout/${props.course.id}`)
+  
   
   const singleCart = [{
     id: props.course.id,
@@ -117,7 +120,8 @@ const handleEnroll = () => {
     instructor: props.course.instructor
   }]
   sessionStorage.setItem('checkout_cart', JSON.stringify(singleCart))
-  window.location.href = `/checkout/${props.course.id}`
+  
+  router.get(`/checkout/${props.course.id}`)
   isEnrolling.value = false
 }
 
@@ -136,47 +140,21 @@ const addToWishlist = () => {
 }
 
 const objectives = computed(() => {
-  if (props.course?.what_you_will_learn) {
-    const objectivesList = props.course.what_you_will_learn.split('\n')
-    return objectivesList.filter(obj => obj.trim().length > 0)
+  if (course.value?.what_you_will_learn) {
+    return course.value.what_you_will_learn.split('\n')
   }
   return [
-    'Master core concepts of ' + (props.course?.title || 'this course'),
+    'Master core concepts of ' + (course.value?.title || 'this course'),
     'Build real-world projects',
     'Get certified upon completion',
-    'Learn from industry experts',
-    'Access downloadable resources',
-    'Lifetime access to course materials'
+    'Learn from industry experts'
   ]
 })
 
-const averageRating = computed(() => {
-  if (reviews.value.length > 0) {
-    const sum = reviews.value.reduce((acc, r) => acc + r.rating, 0)
-    return (sum / reviews.value.length).toFixed(1)
-  }
-  return props.course?.rating || 4.8
-})
-
-const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  })
-}
-
-const getAvatarDisplay = (review) => {
-  if (review.user?.avatarType === 'cat') {
-    return review.user.avatar || '🐱'
-  }
-  return review.user?.name?.charAt(0).toUpperCase() || 'U'
-}
-
-// Calculate total lectures
-const totalLectures = computed(() => {
-  return sections.value.reduce((sum, section) => sum + (section.lessons?.length || 0), 0)
-})
+const averageRating = computed(() => course.value?.rating || 4.8)
+const totalReviews = computed(() => course.value?.reviews || 0)
+const totalStudents = computed(() => course.value?.students || 0)
+const totalHours = computed(() => course.value?.hours || 0)
 </script>
 
 <template>
@@ -206,15 +184,15 @@ const totalLectures = computed(() => {
               <div class="flex items-center gap-1">
                 <Star class="w-4 h-4 text-yellow-400 fill-yellow-400" />
                 <span>{{ averageRating }}</span>
-                <span class="text-gray-400">({{ reviews.length }} reviews)</span>
+                <span class="text-gray-400">({{ formatNumber(totalReviews) }} reviews)</span>
               </div>
               <div class="flex items-center gap-1">
                 <Users class="w-4 h-4" />
-                <span>{{ formatNumber(course?.students || 0) }} students</span>
+                <span>{{ formatNumber(totalStudents) }} students</span>
               </div>
               <div class="flex items-center gap-1">
                 <Clock class="w-4 h-4" />
-                <span>{{ course?.hours || 40 }} total hours</span>
+                <span>{{ totalHours }} total hours</span>
               </div>
             </div>
             <div class="mt-4 flex items-center gap-2">
@@ -273,10 +251,10 @@ const totalLectures = computed(() => {
             Overview
           </button>
           <button @click="activeTab = 'curriculum'" :class="['py-4 font-medium border-b-2 transition-colors whitespace-nowrap', activeTab === 'curriculum' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600 dark:text-slate-400']">
-            Curriculum ({{ sections.length }} sections)
+            Curriculum
           </button>
           <button @click="activeTab = 'reviews'" :class="['py-4 font-medium border-b-2 transition-colors whitespace-nowrap', activeTab === 'reviews' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600 dark:text-slate-400']">
-            Reviews ({{ reviews.length }})
+            Reviews
           </button>
         </div>
       </div>
@@ -303,7 +281,7 @@ const totalLectures = computed(() => {
         <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 h-fit">
           <h3 class="font-bold mb-3 dark:text-white">This course includes:</h3>
           <ul class="space-y-3 text-sm">
-            <li class="flex items-center gap-2 dark:text-slate-300"><Video class="w-4 h-4 text-blue-600" /> {{ course?.hours || 40 }} hours on-demand video</li>
+            <li class="flex items-center gap-2 dark:text-slate-300"><Video class="w-4 h-4 text-blue-600" /> {{ totalHours }} hours on-demand video</li>
             <li class="flex items-center gap-2 dark:text-slate-300"><Download class="w-4 h-4 text-blue-600" /> Downloadable resources</li>
             <li class="flex items-center gap-2 dark:text-slate-300"><Award class="w-4 h-4 text-blue-600" /> Certificate of completion</li>
             <li class="flex items-center gap-2 dark:text-slate-300"><MessageCircle class="w-4 h-4 text-blue-600" /> Access on mobile and TV</li>
@@ -313,13 +291,10 @@ const totalLectures = computed(() => {
       </div>
     </div>
 
-    <!-- Curriculum Tab - UNIQUE CONTENT PER COURSE -->
+    <!-- Curriculum Tab -->
     <div v-if="activeTab === 'curriculum'" class="max-w-7xl mx-auto px-4 py-8">
       <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-2xl font-bold dark:text-white">Course Content</h2>
-          <span class="text-sm text-slate-500">{{ totalLectures }} lectures total</span>
-        </div>
+        <h2 class="text-2xl font-bold mb-4 dark:text-white">Course Content</h2>
         <div v-if="sections.length === 0" class="text-center py-8 text-slate-500">
           Course curriculum is being prepared.
         </div>
@@ -346,23 +321,22 @@ const totalLectures = computed(() => {
       </div>
     </div>
 
-    <!-- Reviews Tab - UNIQUE CONTENT PER COURSE -->
+    <!-- Reviews Tab -->
     <div v-if="activeTab === 'reviews'" class="max-w-7xl mx-auto px-4 py-8">
       <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6">
-        <!-- Rating Summary -->
         <div class="flex items-center gap-8 pb-6 border-b dark:border-slate-700 mb-6">
           <div class="text-center">
             <div class="text-5xl font-bold text-blue-600">{{ averageRating }}</div>
             <div class="flex text-yellow-400 text-sm mt-2">
               <span v-for="i in 5" :key="i">★</span>
             </div>
-            <div class="text-sm text-slate-500 mt-1">{{ reviews.length }} reviews</div>
+            <div class="text-sm text-slate-500 mt-1">{{ totalReviews }} reviews</div>
           </div>
           <div class="flex-1">
             <div v-if="reviews.length > 0" class="space-y-2">
               <div v-for="star in [5,4,3,2,1]" :key="star" class="flex items-center gap-3">
                 <span class="text-sm w-8">{{ star }}★</span>
-                <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div class="flex-1 h-2 bg-slate-200 rounded-full">
                   <div class="h-full bg-yellow-400 rounded-full" :style="{ width: (reviews.filter(r => r.rating === star).length / reviews.length * 100) + '%' }"></div>
                 </div>
                 <span class="text-sm text-slate-500 w-12">{{ reviews.filter(r => r.rating === star).length }}</span>
@@ -371,13 +345,12 @@ const totalLectures = computed(() => {
             <div v-else class="text-center py-4 text-slate-500">No reviews yet</div>
           </div>
         </div>
-
-        <!-- Reviews List -->
+        
         <div v-if="reviews.length > 0" class="space-y-6">
           <div v-for="review in reviews" :key="review.id" class="border-b dark:border-slate-700 pb-5 last:border-0">
             <div class="flex items-start gap-4">
-              <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-                {{ getAvatarDisplay(review) }}
+              <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
+                {{ review.user?.name?.charAt(0) || 'U' }}
               </div>
               <div class="flex-1">
                 <div class="flex items-center justify-between flex-wrap gap-2">
@@ -388,23 +361,17 @@ const totalLectures = computed(() => {
                       <span v-for="i in (5 - review.rating)" :key="i" class="text-slate-300">★</span>
                     </div>
                   </div>
-                  <span class="text-xs text-slate-400">{{ formatDate(review.date) }}</span>
+                  <span class="text-xs text-slate-400">{{ new Date(review.date).toLocaleDateString() }}</span>
                 </div>
-                <p class="text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">{{ review.comment }}</p>
-                <div class="flex items-center gap-4 mt-3">
-                  <button class="text-xs text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1">
-                    👍 Helpful ({{ review.helpful || 0 }})
-                  </button>
-                </div>
+                <p class="text-slate-600 dark:text-slate-300 mt-2">{{ review.comment }}</p>
               </div>
             </div>
           </div>
         </div>
         
-        <div v-else class="text-center py-12">
+        <div v-else class="text-center py-8">
           <div class="text-5xl mb-4">⭐</div>
-          <h3 class="text-lg font-semibold dark:text-white mb-2">No reviews yet</h3>
-          <p class="text-slate-500">Be the first to review this course!</p>
+          <p class="text-slate-500">No reviews yet. Be the first to review this course!</p>
         </div>
       </div>
     </div>
@@ -415,13 +382,8 @@ const totalLectures = computed(() => {
 .animate-spin {
   animation: spin 1s linear infinite;
 }
-
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

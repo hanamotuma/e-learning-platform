@@ -941,6 +941,7 @@ onUnmounted(() => {
         {{ $page.props.auth.user.name?.charAt(0).toUpperCase() || 'U' }}
     </div>
 </Link>
+
               </div>
             </template>
           </div>

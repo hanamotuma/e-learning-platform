@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Models\Enrollment;
+use App\Models\Certificate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -9,6 +12,7 @@ use Inertia\Inertia;
 
 class ProfileController extends Controller
 {
+    // Edit profile page (for updating profile)
     public function edit()
     {
         $user = Auth::user();
@@ -28,38 +32,7 @@ class ProfileController extends Controller
         ]);
     }
 
-    public function publicProfile($id)
-{
-    $user = \App\Models\User::findOrFail($id);
-    
-    $enrolledCourses = \App\Models\Enrollment::with(['course.instructor'])
-        ->where('user_id', $id)
-        ->orderBy('created_at', 'desc')
-        ->get();
-    
-    $certificates = \App\Models\Certificate::with(['course'])
-        ->where('user_id', $id)
-        ->orderBy('created_at', 'desc')
-        ->get();
-    
-    return Inertia::render('Profile/Public', [
-        'user' => [
-            'id' => $user->id,
-            'name' => $user->full_name ?? $user->name,
-            'username' => $user->username,
-            'email' => $user->email,
-            'phone' => $user->phone,
-            'bio' => $user->bio,
-            'interests' => $user->interests,
-            'education' => $user->education,
-            'created_at' => $user->created_at,
-            'profile_picture_url' => $user->profile_picture_url,
-        ],
-        'enrolledCourses' => $enrolledCourses,
-        'certificates' => $certificates,
-    ]);
-}
-
+    // Update profile
     public function update(Request $request)
     {
         $user = Auth::user();
@@ -96,5 +69,38 @@ class ProfileController extends Controller
         $user->save();
         
         return redirect()->back()->with('success', 'Profile updated successfully!');
+    }
+
+    // Public profile page (view only)
+    public function publicProfile($id)
+    {
+        $user = User::findOrFail($id);
+        
+        $enrolledCourses = Enrollment::with(['course.instructor'])
+            ->where('user_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        $certificates = Certificate::with(['course'])
+            ->where('user_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        return Inertia::render('Profile/Public', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->full_name ?? $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'bio' => $user->bio,
+                'interests' => $user->interests,
+                'education' => $user->education,
+                'created_at' => $user->created_at,
+                'profile_picture_url' => $user->profile_picture_url,
+            ],
+            'enrolledCourses' => $enrolledCourses,
+            'certificates' => $certificates,
+        ]);
     }
 }

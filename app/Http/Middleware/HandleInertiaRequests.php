@@ -35,12 +35,15 @@ class HandleInertiaRequests extends Middleware
     {
         return array_merge(parent::share($request), [
             // Fix: Check if auth()->user() exists before accessing
-            'auth.user' => $request->user() ? [
-                'id' => $request->user()->id,
-                'name' => $request->user()->name,
-                'email' => $request->user()->email,
-                'username' => $request->user()->username ?? null,
-            ] : null,
+            'auth' => [
+    'user' => fn () => $request->user()
+        ? [
+            'user_id' => $request->user()->user_id,
+            'name' => $request->user()->name,
+            'email' => $request->user()->email,
+        ]
+        : null,
+],
             
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

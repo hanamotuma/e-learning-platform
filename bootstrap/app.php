@@ -32,6 +32,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
             'admin' => AdminMiddleware::class,
+            'student' => \App\Http\Middleware\StudentMiddleware::class,
+            'instructor' => \App\Http\Middleware\InstructorMiddleware::class,
         ]);
     })
 

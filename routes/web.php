@@ -12,8 +12,6 @@ use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
-use App\Http\Controllers\Admin\AdminDashboardController;
-use App\Http\Controllers\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Instructor\InstructorDashboardController;
 use App\Http\Controllers\Instructor\InstructorCourseController;
 use App\Http\Controllers\ProfileController;
@@ -32,23 +30,19 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 // =========================
 Route::get('/course/{id}', [CourseController::class, 'show'])->name('course.show');
 
-// =========================
-// AUTH DASHBOARDS
-// =========================
+
 Route::middleware(['auth'])->group(function () {
-    Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])
-        ->middleware('role:admin')
-        ->name('admin.dashboard');
+    
     
     Route::get('/student/dashboard', [DashboardController::class, 'index'])->middleware('auth')->name('student.dashboard');
     
     Route::get('/my-courses', [EnrollmentController::class, 'myCourses'])->name('my-courses');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::get('/profile/{id}', [ProfileController::class, 'publicProfile'])->name('profile.public');
-});
+    
+    });
 
-Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
+
 
 // =========================
 // COURSE ROUTES
@@ -92,7 +86,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 // CHECKOUT & PAYMENT ROUTES
 // =========================
 Route::middleware(['auth'])->group(function () {
-    Route::get('/checkout', function () {
+    Route::get('/checkout/{courseId}', function ($courseId) {
         return Inertia::render('Checkout/Index');
     })->name('checkout.index');
     
@@ -102,19 +96,21 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/checkout/callback/{tx_ref}', [CheckoutController::class, 'callback'])->name('checkout.callback');
     Route::get('/checkout/success/{tx_ref}', [CheckoutController::class, 'success'])->name('checkout.success');
     Route::get('/checkout/failed/{tx_ref}', [CheckoutController::class, 'failed'])->name('checkout.failed');
+    // Checkout route
+Route::get('/checkout/{courseId}', function ($courseId) {
+    return Inertia::render('Checkout/Index');
+})->name('checkout.single');
     
     Route::get('/payments', [PaymentController::class, 'index'])->name('student.payments');
     Route::get('/payment/success', function () {
         return Inertia::render('Payment/Success');
     })->name('payment.success');
+    Route::post('/pay', [PaymentController::class, 'initialize']);
+Route::get('/payment/callback', [PaymentController::class, 'callback'])
+    ->name('payment.callback');
 });
 
-// =========================
-// ADMIN PAYMENT ROUTES
-// =========================
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/payments', [PaymentController::class, 'adminIndex'])->name('admin.payments');
-});
+
 
 // =========================
 // QUIZ ROUTES
@@ -174,18 +170,7 @@ Route::middleware(['auth', 'role:instructor'])->prefix('instructor')->group(func
     Route::post('/courses/{courseId}/quizzes/{quizId}/questions', [InstructorCourseController::class, 'addQuestion'])->name('instructor.questions.store');
 });
 
-// =========================
-// ADMIN COURSE MANAGEMENT
-// =========================
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/dashboard-data', [AdminDashboardController::class, 'index'])->name('admin.dashboard.data');
-    Route::get('/courses', [AdminCourseController::class, 'index'])->name('admin.courses.index');
-    Route::post('/courses', [AdminCourseController::class, 'store'])->name('admin.courses.store');
-    Route::put('/courses/{course}', [AdminCourseController::class, 'update'])->name('admin.courses.update');
-    Route::delete('/courses/{course}', [AdminCourseController::class, 'destroy'])->name('admin.courses.destroy');
-    Route::get('/courses/{course}/students-data', [AdminCourseController::class, 'students'])->name('admin.courses.students');
-    Route::post('/courses/{course}/approve', [AdminCourseController::class, 'approve'])->name('admin.courses.approve');
-});
+
 
 // =========================
 // NOTIFICATION ROUTES
@@ -200,6 +185,14 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // =========================
+// PROFILE ROUTES
+// =========================
+Route::middleware(['auth'])->group(function () {
+    Route::get('/profile/{id}', [App\Http\Controllers\ProfileController::class, 'publicProfile'])->name('profile.public');
+    Route::get('/profile/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+});
+// =========================
 // SUPPORT TICKET ROUTES
 // =========================
 Route::middleware(['auth'])->prefix('support')->group(function () {
@@ -210,11 +203,6 @@ Route::middleware(['auth'])->prefix('support')->group(function () {
     Route::post('/{id}/reply', [SupportTicketController::class, 'reply'])->name('support.reply');
 });
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin/support')->group(function () {
-    Route::get('/', [SupportTicketController::class, 'adminIndex'])->name('admin.support.index');
-    Route::get('/{id}', [SupportTicketController::class, 'adminShow'])->name('admin.support.show');
-    Route::post('/{id}/status', [SupportTicketController::class, 'updateStatus'])->name('admin.support.status');
-});
 
 // =========================
 // CHATBOT ROUTES
@@ -234,9 +222,6 @@ Route::middleware(['auth'])->group(function () {
         ->name('instructor.reports');
 });
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/reports', [ReportController::class, 'adminReports'])->name('admin.reports');
-});
 
 // =========================
 // REVIEW ROUTES
@@ -246,11 +231,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/courses/{courseId}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
 });
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/reviews', [ReviewController::class, 'adminIndex'])->name('admin.reviews.index');
-    Route::post('/reviews/{id}/approve', [ReviewController::class, 'approve'])->name('admin.reviews.approve');
-    Route::delete('/reviews/{id}', [ReviewController::class, 'destroy'])->name('admin.reviews.destroy');
-});
+
 
 // =========================
 // AUTH ROUTES

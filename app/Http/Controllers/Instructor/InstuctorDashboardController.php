@@ -6,9 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\Enrollment;
 use App\Models\Payment;
-use App\Models\User;
 use App\Models\Review;
-use App\Models\QuizAttempt;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -35,9 +34,6 @@ class InstructorDashboardController extends Controller
             }),
             'average_rating' => round($courses->avg('rating') ?? 0, 1),
             'total_reviews' => Review::whereIn('course_id', $courses->pluck('id'))->count(),
-            'pending_payout' => $courses->sum(function($course) {
-                return $course->enrollments->sum('amount_paid') * 0.7; // 70% to instructor
-            }),
         ];
         
         // Get recent enrollments
@@ -45,13 +41,6 @@ class InstructorDashboardController extends Controller
             ->whereIn('course_id', $courses->pluck('id'))
             ->orderBy('created_at', 'desc')
             ->limit(10)
-            ->get();
-        
-        // Get recent reviews
-        $recentReviews = Review::with(['course', 'user'])
-            ->whereIn('course_id', $courses->pluck('id'))
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
             ->get();
         
         // Get monthly earnings chart data
@@ -71,7 +60,6 @@ class InstructorDashboardController extends Controller
             'stats' => $stats,
             'courses' => $courses,
             'recentEnrollments' => $recentEnrollments,
-            'recentReviews' => $recentReviews,
             'monthlyEarnings' => $monthlyEarnings,
             'auth' => [
                 'user' => [
@@ -80,18 +68,6 @@ class InstructorDashboardController extends Controller
                     'email' => $instructor->email,
                 ]
             ]
-        ]);
-    }
-    
-    public function courses()
-    {
-        $courses = Course::with(['category', 'enrollments'])
-            ->where('instructor_id', Auth::id())
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-        
-        return Inertia::render('Instructor/Courses', [
-            'courses' => $courses,
         ]);
     }
     
@@ -118,7 +94,7 @@ class InstructorDashboardController extends Controller
             return $course->enrollments->sum('amount_paid');
         });
         
-        $pendingPayout = $totalEarnings * 0.3; // 30% platform fee
+        $platformFee = $totalEarnings * 0.3;
         $availableBalance = $totalEarnings * 0.7;
         
         $transactions = Payment::with(['course', 'user'])
@@ -128,7 +104,7 @@ class InstructorDashboardController extends Controller
         
         return Inertia::render('Instructor/Earnings', [
             'totalEarnings' => $totalEarnings,
-            'pendingPayout' => $pendingPayout,
+            'platformFee' => $platformFee,
             'availableBalance' => $availableBalance,
             'transactions' => $transactions,
         ]);
