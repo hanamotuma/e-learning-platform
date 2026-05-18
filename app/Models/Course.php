@@ -16,7 +16,12 @@ class Course extends Model
     'title',
     'slug',
     'description',
+    'requirements',
+    'what_you_will_learn',
     'price',
+    'original_price',
+    'hours',
+    'level',
     'instructor_id', 
     'category_id',
     'difficulty_level',
@@ -24,9 +29,10 @@ class Course extends Model
     'instructor_bio',
     'rating',
     'reviews_count',
-    'image_url',
+    'image',
     'duration_hours',
     'is_published',
+    'is_featured',
     'curriculum',
     'requirements',
     'learning_outcomes',
@@ -39,6 +45,7 @@ class Course extends Model
         'curriculum' => 'array',
         'requirements' => 'array',
         'learning_outcomes' => 'array',
+        'approved_at' => 'datetime',
             ];
 
     // Relationships

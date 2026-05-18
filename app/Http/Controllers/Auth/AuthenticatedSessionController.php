@@ -28,32 +28,29 @@ class AuthenticatedSessionController extends Controller
     /**
      * LOGIN (ADMIN + USER TABLE SYSTEM)
      */
-   public function store(LoginRequest $request): RedirectResponse
+  public function store(LoginRequest $request): RedirectResponse
 {
     $request->authenticate();
     $request->session()->regenerate();
 
-    // Check for redirect after checkout
-    $redirectAfterCheckout = session('redirect_after_checkout') ?? $request->session()->get('redirect_after_checkout');
-    $redirectAfterLogin = session('redirect_after_login') ?? $request->session()->get('redirect_after_login');
-    
-    if ($redirectAfterCheckout || $redirectAfterLogin === '/checkout') {
-        $request->session()->forget('redirect_after_checkout');
-        $request->session()->forget('redirect_after_login');
-        return redirect('/checkout');
-    }
-
     $user = Auth::user();
     
-    if ($user->hasRole('admin')) {
-        return redirect()->route('admin.dashboard');
+    // Check for redirect after checkout
+    $redirectAfterCheckout = session('redirect_after_checkout');
+    if ($redirectAfterCheckout) {
+        session()->forget('redirect_after_checkout');
+        return redirect('/checkout');
+    }
+    
+    // Redirect based on role
+   if ($request->user()->hasRole('admin')) {
+        return redirect()->intended(route('admin.dashboard'));
+    }
+    if ($request->user()->hasRole('instructor')) {
+        return redirect()->intended(route('instructor.dashboard'));
     }
 
-    if ($user->hasRole('instructor')) {
-        return redirect()->route('instructor.dashboard');
-    }
-
-    return redirect()->intended('/student/dashboard');
+    return redirect()->intended(route('student.dashboard'));
 }
 
     /**
@@ -63,6 +60,7 @@ class AuthenticatedSessionController extends Controller
     {
         Auth::guard('admin')->logout();
         Auth::guard('web')->logout();
+
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

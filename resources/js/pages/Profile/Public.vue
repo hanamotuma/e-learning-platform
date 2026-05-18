@@ -26,11 +26,11 @@ const goToCourse = (courseId) => {
 }
 
 const goToEditProfile = () => {
-    router.get('/profile/edit')
+    router.get('/profile')
 }
 
 const goToDashboard = () => {
-    router.get('/student/dashboard')
+     window.location.href = '/student/dashboard'
 }
 
 onMounted(() => {
@@ -64,9 +64,11 @@ const inProgressCourses = computed(() => props.enrolledCourses?.filter(c => c.pr
                         Back to Home
                     </button>
                     <div class="flex items-center gap-3">
-                        <button @click="goToDashboard" class="px-4 py-2 bg-white/20 rounded-xl hover:bg-white/30 transition-colors text-sm font-medium">
-                            Dashboard
-                        </button>
+                        <!-- Dashboard Button - Make sure it's like this -->
+<button @click="goToDashboard" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2 shadow-md">
+    <LayoutDashboard class="w-4 h-4" />
+    Dashboard
+</button>
                         <button @click="goToEditProfile" class="px-4 py-2 bg-white/20 rounded-xl hover:bg-white/30 transition-colors text-sm font-medium">
                             Edit Profile
                         </button>

@@ -69,18 +69,34 @@ class InstructorCourseController extends Controller
             $slug = $originalSlug . '-' . $counter;
             $counter++;
         }
-        
+
         $data = $request->all();
         $data['slug'] = $slug;
         $data['instructor_id'] = Auth::id();
         $data['is_published'] = false;
-        
+        $imagePath = null;
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('course-images', 'public');
             $data['image'] = '/storage/' . $path;
         }
         
         $course = Course::create($data);
+       
+        $course = Course::create([
+        'title' => $request->title,
+        'slug' => $slug,
+        'description' => $request->description,
+        'what_you_will_learn' => $request->what_you_will_learn,
+        'requirements' => $request->requirements,
+        'price' => $request->price,
+        'category_id' => $request->category_id,
+        'difficulty_level' => $request->difficulty_level,
+        'instructor_id' => Auth::id(),
+        'image' => $imagePath,
+        'status' => 'draft',
+        'is_published' => false,
+        'approval_status' => 'pending', // Important: pending approval
+         ]);
         
         // Notify admin for approval
         $admins = \App\Models\User::role('admin')->get();
@@ -93,10 +109,47 @@ class InstructorCourseController extends Controller
                 'action_url' => route('admin.courses.edit', $course->id),
             ]);
         }
-        
-        return redirect()->route('instructor.courses.edit', $course->id)
-            ->with('success', 'Course created! Now add sections and lessons.');
+
+         // Save sections and lessons
+    if ($request->has('sections')) {
+        foreach ($request->sections as $sectionData) {
+            $section = Section::create([
+                'course_id' => $course->id,
+                'title' => $sectionData['title'],
+                'description' => $sectionData['description'] ?? null,
+                'order_position' => $sectionData['order_position'] ?? 0,
+            ]);
+            
+            if (isset($sectionData['lessons'])) {
+                foreach ($sectionData['lessons'] as $lessonData) {
+                    Lesson::create([
+                        'course_id' => $course->id,
+                        'section_id' => $section->id,
+                        'title' => $lessonData['title'],
+                        'content' => $lessonData['content'] ?? null,
+                        'video_url' => $lessonData['video_url'] ?? null,
+                        'duration_minutes' => $lessonData['duration_minutes'] ?? 0,
+                        'is_free' => $lessonData['is_free'] ?? false,
+                    ]);
+                }
+            }
+        }
     }
+        // Notify admin about new course
+    $admins = User::role('admin')->get();
+    foreach ($admins as $admin) {
+        Notification::create([
+            'user_id' => $admin->id,
+            'type' => 'course_pending',
+            'title' => '📚 New Course Pending Approval',
+            'message' => Auth::user()->full_name . ' submitted "' . $course->title . '" for approval',
+            'action_url' => route('admin.courses.show', $course->id),
+            'is_read' => false
+        ]);
+    }
+
+    return redirect()->route('instructor.courses.index')->with('success', 'Course submitted for admin approval. You will be notified once reviewed.');
+}
     
     public function edit($id)
     {

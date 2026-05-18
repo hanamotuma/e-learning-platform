@@ -5,69 +5,50 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
     public function run()
     {
         // Reset cached roles and permissions
- app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-        // Use firstOrCreate to prevent "RoleAlreadyExists" errors
-        // Create roles if they don't exist
-        if (!Role::where('name', 'student')->exists()) {
-            Role::create(['name' => 'student', 'guard_name' => 'web']);
-        }
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
         
-        if (!Role::where('name', 'instructor')->exists()) {
-            Role::create(['name' => 'instructor', 'guard_name' => 'web']);
-        }
+        // Create roles
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'instructor', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'student', 'guard_name' => 'web']);
         
-        if (!Role::where('name', 'admin')->exists()) {
-            Role::create(['name' => 'admin', 'guard_name' => 'web']);
-        }
-        // Create permissions safely
+        // Create permissions
         $permissions = [
-            'view courses',
-            'enroll in courses',
-            'complete courses',
-            'get certificates',
-            'manage profile',
-            'manage courses',
-            'manage users',
-            'view analytics'
+            'view courses', 'enroll in courses', 'complete courses', 
+            'get certificates', 'manage profile', 'manage courses', 
+            'manage users', 'view analytics', 'create courses',
+            'edit courses', 'delete courses', 'approve courses',
+            'manage payments', 'manage instructors', 'manage students'
         ];
-
-         foreach ($permissions as $permission) {
-            if (!Permission::where('name', $permission)->exists()) {
-                Permission::create(['name' => $permission, 'guard_name' => 'web']);
-            }
+        
+        foreach ($permissions as $permission) {
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
-
-        // Syncing permissions is often better than givePermissionTo in seeders
-        // syncPermissions() replaces existing permissions with the ones provided
-        $studentRole = Role::where('name', 'student')->first();
-        $instructorRole = Role::where('name', 'instructor')->first();
-        $adminRole = Role::where('name', 'admin')->first();
-
-        $studentRole->syncPermissions([
-            'view courses', 
-            'enroll in courses', 
-            'complete courses', 
-            'get certificates', 
-            'manage profile'
-        ]);
-        $instructorRole->syncPermissions([
-            'view courses', 
-            'manage courses', 
-            'view analytics', 
-            'manage profile'
-        ]);
-
-        // Admins get everything
+        
+        // Assign permissions to admin
+        $adminRole = Role::findByName('admin', 'web');
         $adminRole->syncPermissions(Permission::all());
-
-        $studentRole= Role::findByName('student', 'web');
-        $studentRole->syncPermissions($permissions);
+        
+        // Assign permissions to instructor
+        $instructorRole = Role::findByName('instructor', 'web');
+        $instructorRole->syncPermissions([
+            'view courses', 'manage courses', 'create courses', 
+            'edit courses', 'view analytics', 'manage profile'
+        ]);
+        
+        // Assign permissions to student
+        $studentRole = Role::findByName('student', 'web');
+        $studentRole->syncPermissions([
+            'view courses', 'enroll in courses', 'complete courses', 
+            'get certificates', 'manage profile'
+        ]);
+        
+        $this->command->info('Roles and permissions seeded successfully!');
     }
 }

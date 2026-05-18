@@ -1077,4 +1077,11 @@ class CourseController extends Controller
             ]);
         }
     }
+    public function featured()
+{
+    // Fetch courses (for example, those with a 'featured' flag or just the latest)
+    $courses = Course::where('is_featured', true)->get(); 
+    
+    return response()->json($courses);
+}
 }

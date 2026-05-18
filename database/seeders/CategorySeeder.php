@@ -17,5 +17,17 @@ class CategorySeeder extends Seeder
     'name' => 'Web Development',
     'slug' => Str::slug('Web Development'),
     ]);
+    Category::create([
+    'name' => 'Data Science',
+    'slug' => Str::slug('Data Science'),
+    ]);
+    Category::create([
+    'name' => 'Graphic Design',
+    'slug' => Str::slug('Graphic Design'),
+    ]);
+    Category::create([
+    'name' => 'Digital Marketing',
+    'slug' => Str::slug('Digital Marketing'),
+    ]);
     }
 }

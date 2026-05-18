@@ -9,15 +9,12 @@ use Spatie\Permission\PermissionRegistrar;
 class RoleSeeder extends Seeder
 {
     public function run(): void
-    {
-        // Clear cache (VERY IMPORTANT)
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
-
-        // Create roles
-        Role::firstOrCreate(['name' => 'admin']);
-        Role::firstOrCreate(['name' => 'instructor']);
-        Role::firstOrCreate(['name' => 'user']); // student role
-
-        $this->command->info('Roles created successfully');
-    }
+{
+    // Create the student role
+    Role::create(['name' => 'student']);
+    
+    // You can also add your other roles here
+    Role::create(['name' => 'instructor']);
+    Role::create(['name' => 'admin']);
+}
 }

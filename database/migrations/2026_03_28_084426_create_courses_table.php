@@ -10,27 +10,36 @@ return new class extends Migration
     {
         Schema::create('courses', function (Blueprint $table) {
             $table->id();
+            $table->string('slug')->unique();
             $table->string('title');
+            $table->text('requirements')->nullable();
+            $table->text('what_you_will_learn')->nullable();
+            $table->text('instructor_bio')->nullable();
+            $table->string('status')->default('draft');
+            $table->boolean('is_featured')->default(false);
             $table->text('description')->nullable();
-            $table->string('instructor_id');
+            $table->unsignedBigInteger('instructor_id');
+
+            $table->foreign('instructor_id')->references('user_id')->on('users');
             $table->decimal('price', 10, 2);
             $table->decimal('original_price', 10, 2);
             $table->float('rating')->default(0);
             $table->integer('reviews')->default(0);
             $table->integer('students')->default(0);
             $table->integer('hours');
-            $table->string('image');
-            $table->string('category_id');
+            $table->string('image')->nullable();
+            $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
             $table->string('badge')->nullable();
             $table->string('level');
             $table->date('date');
-            $table->string('status')->default('active'); // active, inactive, archived
+            $table->boolean('is_published')->default(false);
             $table->string('difficulty_level')->nullable();
             $table->timestamps();
+            
         });
     }
 
-    public function down()
+   public function down()
     {
         Schema::dropIfExists('courses');
     }

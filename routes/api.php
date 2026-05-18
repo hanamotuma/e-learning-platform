@@ -5,13 +5,57 @@ use App\Models\Course;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\CourseController;
 
-// Public test route (no auth needed)
+/*
+|--------------------------------------------------------------------------
+| Public Routes (No Login Required)
+|--------------------------------------------------------------------------
+*/
+
 Route::get('/test', function () {
     return response()->json(['message' => 'API is working']);
 });
 
-// Protected routes (require authentication)
+// Move this here so your Home.vue can always see the courses
+Route::get('/courses', function () {
+    $courses = Course::where('is_published', true)
+        ->with(['instructor', 'category'])
+        ->latest()
+        ->get() // REMOVED take(12) - get ALL published courses
+        ->map(function ($course) {
+            return [
+                'id' => $course->id,
+                'title' => $course->title,
+                'description' => $course->description,
+                'price' => $course->price,
+                'originalPrice' => $course->price * 3,
+                'image' => $course->image ?? 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=500',
+                'instructor' => $course->instructor->full_name ?? 'Expert Instructor',
+                'category' => $course->category->name ?? 'Development',
+                'rating' => $course->rating ?? 4.8,
+                'reviews' => $course->reviews_count ?? rand(1000, 20000),
+                'students' => $course->students_count ?? rand(10000, 150000),
+                'hours' => $course->duration_hours ?? rand(20, 60),
+                'badge' => 'Featured',
+                'level' => $course->difficulty_level ?? 'All Levels',
+                'slug' => $course->slug,
+                'inCart' => false,
+            ];
+        });
+    
+    return response()->json($courses);
+});
+
+    Route::get('/courses', [CourseController::class, 'featured'])->name('api.courses.featured');
+
+
+/*
+|--------------------------------------------------------------------------
+| Protected Routes (Login Required via Sanctum)
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('auth:sanctum')->group(function () {
     
     // Get user enrollments
@@ -27,41 +71,27 @@ Route::middleware('auth:sanctum')->group(function () {
             'total' => $enrollments->count()
         ]);
     });
-    
-    // Enroll in course after payment
+
+    // Unified Enrollment Route
     Route::post('/enroll', function (Request $request) {
-        \Log::info('Enroll API called', $request->all());
-        
         $user = Auth::user();
         $courseId = $request->course_id;
         
         if (!$courseId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Course ID is required'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Course ID required'], 400);
         }
         
-        // Check if already enrolled
         $existing = Enrollment::where('user_id', $user->id)
             ->where('course_id', $courseId)
             ->first();
         
         if ($existing) {
-            return response()->json([
-                'success' => true,
-                'already_enrolled' => true,
-                'message' => 'Already enrolled'
-            ]);
+            return response()->json(['success' => true, 'already_enrolled' => true, 'message' => 'Already enrolled']);
         }
         
         $course = Course::find($courseId);
-        
         if (!$course) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Course not found'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Course not found'], 404);
         }
         
         try {
@@ -75,20 +105,14 @@ Route::middleware('auth:sanctum')->group(function () {
                 'amount_paid' => $course->price,
             ]);
             
-            \Log::info('Enrollment created', ['enrollment_id' => $enrollment->id]);
-            
             return response()->json([
-                'success' => true,
+                'success' => true, 
                 'enrollment' => $enrollment,
                 'message' => 'Successfully enrolled in ' . $course->title
             ]);
         } catch (\Exception $e) {
-            \Log::error('Enrollment creation failed', ['error' => $e->getMessage()]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     });
+
 });

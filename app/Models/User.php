@@ -3,8 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -27,19 +28,10 @@ class User extends Authenticatable
         'username',
         'email',
         'password',
-        'is_active',
-        'address',
-        'city',
-        'state',
-        'zip_code',
-        'country',
         'phone',
         'bio',
-        'interests',
-        'education',
-        'profile_picture_url',
-        'telebirr_phone',
-        'cbe_phone',
+        'role'
+        
     ];
 
     protected $hidden = [
@@ -52,6 +44,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
         'password' => 'hashed',
+        'role' => 'string',
     ];
 
     public function getProfilePictureUrlAttribute($value)
@@ -62,6 +55,12 @@ class User extends Authenticatable
             return null;
         }
     }
+
+    
+public function instructorProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
+{
+    return $this->hasOne(InstructorProfile::class, 'user_id');
+}
 
     // FIXED: Accessor for full_name attribute
     public function getFullNameAttribute()

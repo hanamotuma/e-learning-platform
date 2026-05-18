@@ -43,477 +43,57 @@ const categories = [
   { id: 'data', name: 'Data Science', icon: Database }
 ]
 
-// Featured courses - All 26 courses
-const featuredCourses = ref([
-  {
-    id: 1,
-    title: 'The Complete Web Development Bootcamp 2026',
-    instructor: 'Dr. Angela Yu',
-    price: 4990,
-    originalPrice: 19990,
-    rating: 4.8,
-    reviews: 12450,
-    students: 125000,
-    hours: 45,
-    image: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=500',
-    category: 'development',
-    badge: 'Bestseller',
-    level: 'Beginner to Advanced',
-    date: '2026-01-15',
-    inCart: false,
-    slug: 'complete-web-development-bootcamp'
-  },
-  {
-    id: 2,
-    title: 'Advanced UI/UX Design Masterclass',
-    instructor: 'Sarah Johnson',
-    price: 3990,
-    originalPrice: 14990,
-    rating: 4.9,
-    reviews: 8450,
-    students: 45000,
-    hours: 32,
-    image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=500',
-    category: 'design',
-    badge: 'Top Rated',
-    level: 'Intermediate',
-    date: '2026-02-01',
-    inCart: false,
-    slug: 'advanced-ui-ux-design'
-  },
-  {
-    id: 3,
-    title: 'Artificial Intelligence A-Z 2026',
-    instructor: 'Prof. Andrew Ng',
-    price: 5990,
-    originalPrice: 24990,
-    rating: 4.9,
-    reviews: 15600,
-    students: 89000,
-    hours: 52,
-    image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=500',
-    category: 'data',
-    badge: 'Trending',
-    level: 'All Levels',
-    date: '2026-01-10',
-    inCart: false,
-    slug: 'ai-ml-masterclass'
-  },
-  {
-    id: 4,
-    title: 'Digital Marketing & Growth Hacking',
-    instructor: 'Gary Vee',
-    price: 3490,
-    originalPrice: 12990,
-    rating: 4.7,
-    reviews: 9820,
-    students: 67000,
-    hours: 28,
-    image: 'https://images.unsplash.com/photo-1432888622747-4eb9a8f2c293?w=500',
-    category: 'marketing',
-    badge: 'Popular',
-    level: 'Beginner',
-    date: '2026-02-10',
-    inCart: false,
-    slug: 'digital-marketing-growth'
-  },
-  {
-    id: 5,
-    title: 'iOS & Swift - The Complete Guide',
-    instructor: 'Paul Hudson',
-    price: 4490,
-    originalPrice: 17990,
-    rating: 4.8,
-    reviews: 5630,
-    students: 34000,
-    hours: 48,
-    image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=500',
-    category: 'development',
-    badge: 'Updated',
-    level: 'Intermediate',
-    date: '2026-02-01',
-    inCart: false,
-    slug: 'ios-swift-guide'
-  },
-  {
-    id: 6,
-    title: 'Project Management Professional (PMP)',
-    instructor: 'Joseph Phillips',
-    price: 3990,
-    originalPrice: 15990,
-    rating: 4.6,
-    reviews: 12400,
-    students: 78000,
-    hours: 35,
-    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=500',
-    category: 'business',
-    badge: 'Certification Prep',
-    level: 'All Levels',
-    date: '2026-01-05',
-    inCart: false,
-    slug: 'pmp-certification'
-  },
-  {
-    id: 7,
-    title: 'Python for Data Science & Machine Learning',
-    instructor: 'Jose Portilla',
-    price: 5490,
-    originalPrice: 19990,
-    rating: 4.8,
-    reviews: 18700,
-    students: 112000,
-    hours: 38,
-    image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=500',
-    category: 'data',
-    badge: 'Best for Beginners',
-    level: 'Beginner',
-    date: '2026-02-05',
-    inCart: false,
-    slug: 'python-data-science'
-  },
-  {
-    id: 8,
-    title: 'The Complete Digital Marketing Course',
-    instructor: 'Phil Ebiner',
-    price: 2990,
-    originalPrice: 9990,
-    rating: 4.5,
-    reviews: 5620,
-    students: 48000,
-    hours: 24,
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500',
-    category: 'marketing',
-    badge: 'Hot & New',
-    level: 'All Levels',
-    date: '2026-02-12',
-    inCart: false,
-    slug: 'complete-digital-marketing'
-  },
-  {
-    id: 9,
-    title: 'OpenClaw: Build & Deploy Real AI Agents',
-    instructor: 'Alet Mely',
-    price: 3799,
-    originalPrice: 14999,
-    rating: 4.7,
-    reviews: 8930,
-    students: 52000,
-    hours: 42,
-    image: 'https://images.unsplash.com/photo-1674027444485-cec3da58eefd?w=500',
-    category: 'development',
-    badge: 'New Release',
-    level: 'Intermediate',
-    date: '2026-02-15',
-    inCart: false,
-    slug: 'openclaw-ai-agents'
-  },
-  {
-    id: 10,
-    title: 'Natural Language Processing with Deep Learning',
-    instructor: 'John Smith',
-    price: 1299,
-    originalPrice: 7990,
-    rating: 4.6,
-    reviews: 4320,
-    students: 28000,
-    hours: 28,
-    image: 'https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=500',
-    category: 'data',
-    badge: 'Best Price',
-    level: 'Advanced',
-    date: '2026-01-25',
-    inCart: false,
-    slug: 'nlp-deep-learning'
-  },
-  {
-    id: 11,
-    title: 'React 19 - The Complete Guide (2026 Edition)',
-    instructor: 'Maximilian Schwarzmüller',
-    price: 4490,
-    originalPrice: 16990,
-    rating: 4.9,
-    reviews: 15600,
-    students: 95000,
-    hours: 42,
-    image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=500',
-    category: 'development',
-    badge: 'Trending',
-    level: 'Intermediate',
-    date: '2026-02-20',
-    inCart: false,
-    slug: 'react-19-guide'
-  },
-  {
-    id: 12,
-    title: 'Cloud Computing with AWS (Solutions Architect)',
-    instructor: 'Stephane Maarek',
-    price: 5990,
-    originalPrice: 24990,
-    rating: 4.8,
-    reviews: 21300,
-    students: 145000,
-    hours: 55,
-    image: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500',
-    category: 'development',
-    badge: 'Certification',
-    level: 'All Levels',
-    date: '2026-02-08',
-    inCart: false,
-    slug: 'aws-solutions-architect'
-  },
-  {
-    id: 13,
-    title: 'DevOps Bootcamp: Docker, Kubernetes, Jenkins',
-    instructor: 'Mumshad Mannambeth',
-    price: 5290,
-    originalPrice: 19990,
-    rating: 4.8,
-    reviews: 12450,
-    students: 82000,
-    hours: 48,
-    image: 'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=500',
-    category: 'development',
-    badge: 'Popular',
-    level: 'Intermediate',
-    date: '2026-01-28',
-    inCart: false,
-    slug: 'devops-bootcamp'
-  },
-  {
-    id: 14,
-    title: 'Cybersecurity Fundamentals & Ethical Hacking',
-    instructor: 'Heather Myles',
-    price: 4990,
-    originalPrice: 18990,
-    rating: 4.7,
-    reviews: 9870,
-    students: 56000,
-    hours: 40,
-    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=500',
-    category: 'development',
-    badge: 'Hot & New',
-    level: 'Beginner',
-    date: '2026-02-18',
-    inCart: false,
-    slug: 'cybersecurity-ethical-hacking'
-  },
-  {
-    id: 15,
-    title: 'Flutter & Dart - Build Native Mobile Apps',
-    instructor: 'Angela Yu',
-    price: 4690,
-    originalPrice: 17990,
-    rating: 4.8,
-    reviews: 11200,
-    students: 73000,
-    hours: 38,
-    image: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=500',
-    category: 'development',
-    badge: 'Updated',
-    level: 'Beginner',
-    date: '2026-02-14',
-    inCart: false,
-    slug: 'flutter-dart-mobile'
-  },
-  {
-    id: 16,
-    title: 'TypeScript: The Complete Developer\'s Guide',
-    instructor: 'Stephen Grider',
-    price: 3990,
-    originalPrice: 14990,
-    rating: 4.9,
-    reviews: 8430,
-    students: 48000,
-    hours: 32,
-    image: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?w=500',
-    category: 'development',
-    badge: 'Top Rated',
-    level: 'Intermediate',
-    date: '2026-01-30',
-    inCart: false,
-    slug: 'typescript-guide'
-  },
-  {
-    id: 17,
-    title: 'MBA in a Box: Business Strategy & Leadership',
-    instructor: 'Chris Haroun',
-    price: 6490,
-    originalPrice: 29990,
-    rating: 4.8,
-    reviews: 15600,
-    students: 89000,
-    hours: 62,
-    image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=500',
-    category: 'business',
-    badge: 'Bestseller',
-    level: 'All Levels',
-    date: '2026-01-12',
-    inCart: false,
-    slug: 'mba-business-strategy'
-  },
-  {
-    id: 18,
-    title: 'Financial Accounting & Analysis for Managers',
-    instructor: 'Brian Bushee',
-    price: 4490,
-    originalPrice: 16990,
-    rating: 4.7,
-    reviews: 8760,
-    students: 52000,
-    hours: 35,
-    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=500',
-    category: 'business',
-    badge: 'Top Rated',
-    level: 'Beginner',
-    date: '2026-02-06',
-    inCart: false,
-    slug: 'financial-accounting'
-  },
-  {
-    id: 19,
-    title: 'Data Analytics for Business Professionals',
-    instructor: 'John Johnson',
-    price: 3990,
-    originalPrice: 15990,
-    rating: 4.6,
-    reviews: 6540,
-    students: 41000,
-    hours: 30,
-    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500',
-    category: 'business',
-    badge: 'Popular',
-    level: 'Intermediate',
-    date: '2026-01-22',
-    inCart: false,
-    slug: 'data-analytics-business'
-  },
-  {
-    id: 20,
-    title: 'Leadership & People Management Certification',
-    instructor: 'Sheila Heen',
-    price: 5290,
-    originalPrice: 19990,
-    rating: 4.8,
-    reviews: 11200,
-    students: 68000,
-    hours: 28,
-    image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=500',
-    category: 'business',
-    badge: 'Certification',
-    level: 'Intermediate',
-    date: '2026-02-09',
-    inCart: false,
-    slug: 'leadership-management'
-  },
-  {
-    id: 21,
-    title: 'Sales & Negotiation Mastery',
-    instructor: 'Chris Voss',
-    price: 3790,
-    originalPrice: 14990,
-    rating: 4.9,
-    reviews: 9870,
-    students: 54000,
-    hours: 24,
-    image: 'https://images.unsplash.com/photo-1557426272-fc759fdf7a8d?w=500',
-    category: 'business',
-    badge: 'Trending',
-    level: 'All Levels',
-    date: '2026-02-16',
-    inCart: false,
-    slug: 'sales-negotiation'
-  },
-  {
-    id: 22,
-    title: 'Blockchain & Cryptocurrency Fundamentals',
-    instructor: 'George Levy',
-    price: 4490,
-    originalPrice: 17990,
-    rating: 4.7,
-    reviews: 7650,
-    students: 47000,
-    hours: 36,
-    image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=500',
-    category: 'development',
-    badge: 'New',
-    level: 'Beginner',
-    date: '2026-02-11',
-    inCart: false,
-    slug: 'blockchain-crypto'
-  },
-  {
-    id: 23,
-    title: 'Power BI - Data Visualization & Dashboard Design',
-    instructor: 'Maven Analytics',
-    price: 3790,
-    originalPrice: 14990,
-    rating: 4.8,
-    reviews: 8930,
-    students: 51000,
-    hours: 28,
-    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=500',
-    category: 'data',
-    badge: 'Best for Beginners',
-    level: 'Beginner',
-    date: '2026-02-03',
-    inCart: false,
-    slug: 'power-bi-data-viz'
-  },
-  {
-    id: 24,
-    title: 'UX Research & Strategy: Design with Data',
-    instructor: 'Megan Smith',
-    price: 4290,
-    originalPrice: 16990,
-    rating: 4.8,
-    reviews: 5430,
-    students: 34000,
-    hours: 34,
-    image: 'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=500',
-    category: 'design',
-    badge: 'Popular',
-    level: 'Intermediate',
-    date: '2026-01-18',
-    inCart: false,
-    slug: 'ux-research-strategy'
-  },
-  {
-    id: 25,
-    title: 'SEO & Content Marketing Masterclass',
-    instructor: 'Brian Dean',
-    price: 3490,
-    originalPrice: 12990,
-    rating: 4.7,
-    reviews: 12300,
-    students: 76000,
-    hours: 26,
-    image: 'https://images.unsplash.com/photo-1432888622747-4eb9a8f2c293?w=500',
-    category: 'marketing',
-    badge: 'Trending',
-    level: 'All Levels',
-    date: '2026-02-07',
-    inCart: false,
-    slug: 'seo-content-marketing'
-  },
-  {
-    id: 26,
-    title: 'Product Management: From Idea to Launch',
-    instructor: 'Marty Cagan',
-    price: 4990,
-    originalPrice: 18990,
-    rating: 4.8,
-    reviews: 9870,
-    students: 59000,
-    hours: 40,
-    image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=500',
-    category: 'business',
-    badge: 'Top Rated',
-    level: 'Intermediate',
-    date: '2026-01-26',
-    inCart: false,
-    slug: 'product-management'
+
+const featuredCourses = ref([])
+
+
+  
+
+
+const fetchCourses = async () => {
+  try {
+    const response = await axios.get('/api/courses')
+    featuredCourses.value = response.data
+    loadCartFromLocalStorage()
+  } catch (error) {
+    console.error('Error fetching courses:', error)
+    // Fallback to sample data if API fails
+    featuredCourses.value = getSampleCourses()
   }
-])
+}
+
+onMounted(() => {
+  initTheme()
+  window.addEventListener('scroll', handleScroll)
+  fetchCourses() // Call API to get courses
+  const shouldOpenCart = sessionStorage.getItem('open_cart')
+  if (shouldOpenCart === 'true') {
+    currentPage.value = 'cart'
+    sessionStorage.removeItem('open_cart')
+  }
+  document.addEventListener('click', handleClickOutside)
+})
+
+const getSampleCourses = () => {
+  return [
+    {
+      id: 1,
+      title: 'Complete Web Development Bootcamp',
+      instructor: 'Dr. Angela Yu',
+      price: 4990,
+      originalPrice: 19990,
+      rating: 4.8,
+      reviews: 12450,
+      students: 125000,
+      hours: 45,
+      image: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=500',
+      category: 'development',
+      badge: 'Bestseller',
+      level: 'Beginner to Advanced',
+    },
+    // Add more sample courses...
+  ]
+}
 
 // Function to save cart to localStorage
 const saveCartToLocalStorage = () => {
@@ -853,11 +433,10 @@ onUnmounted(() => {
     </button>
 
     <!-- Mobile Menu Button -->
-    <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="lg:hidden fixed top-5 right-4 z-50 w-11 h-11 bg-white dark:bg-slate-800 rounded-xl shadow-lg flex items-center justify-center border border-slate-200 dark:border-slate-700">
-      <Menu v-if="!isMobileMenuOpen" class="w-5 h-5 text-blue-600" />
-      <X v-else class="w-5 h-5 text-blue-600" />
-    </button>
-
+    <!-- In the mobile menu, change this -->
+<Link href="/student/dashboard" class="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl">
+    Dashboard
+</Link>
     <!-- Header -->
     <header :class="[
       'fixed top-0 left-0 right-0 z-40 transition-all duration-500',
@@ -928,16 +507,16 @@ onUnmounted(() => {
     <span class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
 </Link>
 
-                <!-- Dashboard Button -->
-                <Link :href="route('student.dashboard')" class="flex items-center space-x-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all">
-                  <User class="w-5 h-5 text-blue-600" />
-                  <span class="text-sm font-medium text-blue-600 dark:text-blue-400">Dashboard</span>
-                </Link>
+               <!-- Dashboard Button -->
+<Link :href="'/student/dashboard'" class="flex items-center space-x-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all">
+  <User class="w-5 h-5 text-blue-600" />
+  <span class="text-sm font-medium text-blue-600 dark:text-blue-400">Dashboard</span>
+</Link>
 
               
-              <!-- Profile Avatar - Only show when logged in -->
-<Link v-if="$page.props.auth?.user" :href="`/profile/${$page.props.auth.user.id}`" class="flex items-center space-x-2">
-    <div class="w-9 h-9 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+           <!-- Profile Avatar - Fix this link -->
+<Link :href="`/profile/${$page.props.auth.user.user_id || $page.props.auth.user.id}`" class="flex items-center space-x-2">
+    <div class="w-9 h-9 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md cursor-pointer hover:scale-105 transition-transform">
         {{ $page.props.auth.user.name?.charAt(0).toUpperCase() || 'U' }}
     </div>
 </Link>
@@ -969,9 +548,11 @@ onUnmounted(() => {
               </Link>
             </template>
             <template v-else>
-              <Link :href="route('student.dashboard')" class="block w-full text-center py-3 bg-blue-600 text-white font-bold rounded-xl">
-                Dashboard
-              </Link>
+              <!-- Change this Dashboard button -->
+<Link href="/student/dashboard" class="flex items-center space-x-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all">
+    <LayoutDashboard class="w-5 h-5 text-blue-600" />
+    <span class="text-sm font-medium text-blue-600 dark:text-blue-400">Dashboard</span>
+</Link>
               <Link :href="route('profile.edit')" class="block w-full text-center py-3 text-slate-600 dark:text-slate-300 font-medium border border-slate-200 dark:border-slate-700 rounded-xl">
                 My Profile
               </Link>

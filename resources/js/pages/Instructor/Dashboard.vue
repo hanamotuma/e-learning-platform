@@ -1,11 +1,10 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { Head, Link, router } from '@inertiajs/vue3'
+import { ref, onMounted } from 'vue'
+import { Head, Link, router, useForm } from '@inertiajs/vue3'
+import InstructorLayout from '@/layouts/InstructorLayout.vue'
 import { 
-  BookOpen, Users, DollarSign, Star, TrendingUp, Calendar, 
-  MessageCircle, Settings, LogOut, Bell, Sun, Moon, Home,
-  PlusCircle, ChevronRight, Award, Clock, BarChart3, 
-  Download, Eye, Edit, Trash2, CheckCircle
+  PlusCircle, BookOpen, Users, DollarSign, Star, Eye, 
+  X, Upload, Video, Plus, Trash2, ChevronLeft, Save
 } from 'lucide-vue-next'
 import axios from 'axios'
 
@@ -15,316 +14,356 @@ const props = defineProps({
     recentEnrollments: Array,
     recentReviews: Array,
     monthlyEarnings: Array,
-    auth: Object
+    categories: Array
 })
 
-const isDarkMode = ref(false)
-const isMobileMenuOpen = ref(false)
-const activeTab = ref('dashboard')
-const showNotifications = ref(false)
+const showCreateModal = ref(false)
+const imagePreview = ref(null)
+const sections = ref([])
+const uploadingVideo = ref(false)
+const uploadProgress = ref({})
 
-const userFullName = computed(() => props.auth?.user?.name || 'Instructor')
-const userInitial = computed(() => userFullName.value.charAt(0).toUpperCase())
+const form = useForm({
+    title: '',
+    description: '',
+    what_you_will_learn: '',
+    requirements: '',
+    price: '',
+    category_id: '',
+    difficulty_level: 'beginner',
+    image: null,
+})
 
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US').format(amount || 0) + ' ETB'
 }
 
-const formatDate = (date) => {
-    return new Date(date).toLocaleDateString()
+const openCreateModal = () => {
+    showCreateModal.value = true
 }
 
-const toggleTheme = () => {
-    isDarkMode.value = !isDarkMode.value
-    if (isDarkMode.value) {
-        document.documentElement.classList.add('dark')
-        localStorage.setItem('theme', 'dark')
-    } else {
-        document.documentElement.classList.remove('dark')
-        localStorage.setItem('theme', 'light')
+const closeCreateModal = () => {
+    showCreateModal.value = false
+    form.reset()
+    imagePreview.value = null
+    sections.value = []
+}
+
+const onImageChange = (event) => {
+    const file = event.target.files[0]
+    if (file) {
+        form.image = file
+        const reader = new FileReader()
+        reader.onload = (e) => { imagePreview.value = e.target.result }
+        reader.readAsDataURL(file)
     }
 }
 
-const initTheme = () => {
-    const savedTheme = localStorage.getItem('theme')
-    if (savedTheme === 'dark') {
-        isDarkMode.value = true
-        document.documentElement.classList.add('dark')
+const addSection = () => {
+    sections.value.push({
+        id: 'temp_' + Date.now(),
+        title: 'New Section',
+        description: '',
+        lessons: []
+    })
+}
+
+const removeSection = (index) => {
+    sections.value.splice(index, 1)
+}
+
+const addLesson = (sectionIndex) => {
+    sections.value[sectionIndex].lessons.push({
+        id: 'temp_' + Date.now(),
+        title: 'New Lesson',
+        content: '',
+        video_file: null,
+        video_url: '',
+        video_preview: null,
+        duration_minutes: 0,
+        is_free: false,
+        uploading: false,
+        uploadProgress: 0
+    })
+}
+
+const removeLesson = (sectionIndex, lessonIndex) => {
+    sections.value[sectionIndex].lessons.splice(lessonIndex, 1)
+}
+
+const onVideoSelect = (sectionIndex, lessonIndex, event) => {
+    const file = event.target.files[0]
+    if (!file) return
+    const lesson = sections.value[sectionIndex].lessons[lessonIndex]
+    lesson.video_file = file
+    lesson.video_preview = URL.createObjectURL(file)
+}
+
+const uploadVideoToServer = async (sectionIndex, lessonIndex) => {
+    const lesson = sections.value[sectionIndex].lessons[lessonIndex]
+    if (!lesson.video_file) return
+    
+    lesson.uploading = true
+    const formData = new FormData()
+    formData.append('video', lesson.video_file)
+    formData.append('title', lesson.title)
+    
+    try {
+        const response = await axios.post('/instructor/temp-upload-video', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (progressEvent) => {
+                const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                lesson.uploadProgress = percent
+            }
+        })
+        lesson.temp_video_path = response.data.path
+        lesson.uploading = false
+        alert('Video uploaded successfully!')
+    } catch (error) {
+        lesson.uploading = false
+        alert('Error uploading video')
     }
 }
 
-const goToCourse = (courseId) => {
-    router.get(`/instructor/courses/${courseId}/edit`)
+const removeVideo = (sectionIndex, lessonIndex) => {
+    const lesson = sections.value[sectionIndex].lessons[lessonIndex]
+    lesson.video_file = null
+    lesson.video_preview = null
+    lesson.temp_video_path = null
+    lesson.video_url = ''
 }
 
-const logout = () => {
-    if (confirm('Are you sure you want to logout?')) {
-        router.post(route('logout'))
-    }
+const submitCourse = () => {
+    form.sections = sections.value
+    form.post('/instructor/courses', {
+        onSuccess: () => {
+            closeCreateModal()
+            router.reload()
+        },
+        onError: (errors) => {
+            alert('Error: ' + JSON.stringify(errors))
+        }
+    })
 }
-
-onMounted(() => {
-    initTheme()
-})
 </script>
 
 <template>
     <Head title="Instructor Dashboard | LearnHub" />
     
-    <div class="min-h-screen bg-gray-50 dark:bg-slate-950">
-        <!-- Theme Toggle -->
-        <button @click="toggleTheme" class="fixed bottom-6 right-6 z-50 w-12 h-12 bg-white dark:bg-slate-800 rounded-full shadow-lg flex items-center justify-center hover:scale-105 transition-all border border-slate-200 dark:border-slate-700">
-            <Sun v-if="isDarkMode" class="w-5 h-5 text-yellow-500" />
-            <Moon v-else class="w-5 h-5 text-slate-700" />
-        </button>
+    <InstructorLayout>
+        <div class="p-6">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold dark:text-white">Instructor Dashboard</h1>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">Manage your courses and students</p>
+                </div>
+                <button @click="openCreateModal" class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                    <PlusCircle class="w-4 h-4" />
+                    New Course
+                </button>
+            </div>
 
-        <!-- Mobile Menu Button -->
-        <button @click="isMobileMenuOpen = !isMobileMenuOpen" class="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-white dark:bg-slate-800 rounded-xl shadow-md flex items-center justify-center border border-slate-200 dark:border-slate-700">
-            <Menu class="w-5 h-5 text-slate-600 dark:text-slate-300" />
-        </button>
-
-        <!-- Sidebar -->
-        <aside :class="[
-            'fixed left-0 top-0 h-full bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 z-40',
-            isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0 lg:w-64'
-        ]">
-            <div class="p-6 border-b border-slate-200 dark:border-slate-800">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl">L</div>
-                    <span class="text-2xl font-black dark:text-white">Learn<span class="text-blue-600">Hub</span></span>
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border">
+                    <p class="text-xs text-slate-500">Total Students</p>
+                    <p class="text-2xl font-bold">{{ stats?.total_students || 0 }}</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border">
+                    <p class="text-xs text-slate-500">Total Revenue</p>
+                    <p class="text-2xl font-bold text-green-600">{{ formatCurrency(stats?.total_revenue) }}</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border">
+                    <p class="text-xs text-slate-500">Average Rating</p>
+                    <p class="text-2xl font-bold text-yellow-500">{{ stats?.average_rating || 0 }} ★</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border">
+                    <p class="text-xs text-slate-500">Pending Payout</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ formatCurrency(stats?.pending_payout || 0) }}</p>
                 </div>
             </div>
 
-            <div class="p-6 border-b border-slate-200 dark:border-slate-800">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
-                        {{ userInitial }}
-                    </div>
-                    <div>
-                        <p class="font-bold dark:text-white">{{ userFullName }}</p>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Instructor</p>
+            <!-- Monthly Earnings Chart -->
+            <div class="bg-white dark:bg-slate-800 rounded-xl border p-6 mb-8">
+                <h2 class="text-xl font-bold mb-4">Monthly Earnings</h2>
+                <div class="flex items-end gap-4 h-64">
+                    <div v-for="item in monthlyEarnings" :key="item.month" class="flex-1 flex flex-col items-center">
+                        <div class="w-full bg-blue-100 dark:bg-blue-900/30 rounded-t-lg transition-all" :style="{ height: (item.earnings / (monthlyEarnings[0]?.earnings || 1) * 200) + 'px' }"></div>
+                        <p class="text-xs text-slate-500 mt-2">{{ item.month }}</p>
+                        <p class="text-xs font-bold">{{ formatCurrency(item.earnings) }}</p>
                     </div>
                 </div>
             </div>
 
-            <nav class="flex-1 p-4 space-y-1">
-                <button @click="activeTab = 'dashboard'" :class="['flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all', activeTab === 'dashboard' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50']">
-                    <Home class="w-5 h-5" /><span>Dashboard</span>
-                </button>
-                <button @click="activeTab = 'courses'" :class="['flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all', activeTab === 'courses' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50']">
-                    <BookOpen class="w-5 h-5" /><span>My Courses</span>
-                </button>
-                <button @click="activeTab = 'students'" :class="['flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all', activeTab === 'students' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50']">
-                    <Users class="w-5 h-5" /><span>Students</span>
-                </button>
-                <button @click="activeTab = 'earnings'" :class="['flex items-center space-x-3 w-full px-4 py-3 rounded-xl transition-all', activeTab === 'earnings' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50']">
-                    <DollarSign class="w-5 h-5" /><span>Earnings</span>
-                </button>
-            </nav>
-
-            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200 dark:border-slate-800">
-                <button @click="logout" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
-                    <LogOut class="w-5 h-5" /><span>Logout</span>
-                </button>
-            </div>
-        </aside>
-
-        <!-- Overlay -->
-        <div v-if="isMobileMenuOpen" @click="isMobileMenuOpen = false" class="fixed inset-0 bg-black/50 z-30 lg:hidden"></div>
-
-        <!-- Main Content -->
-        <main class="lg:ml-64">
-            <header class="bg-white dark:bg-slate-900 sticky top-0 z-20 border-b border-slate-200 dark:border-slate-800">
-                <div class="px-4 lg:px-8 py-4 flex items-center justify-between">
-                    <div>
-                        <h1 class="text-xl lg:text-2xl font-black dark:text-white">Instructor Dashboard</h1>
-                        <p class="text-xs text-slate-500">Manage your courses and students</p>
+            <div class="grid lg:grid-cols-2 gap-6">
+                <!-- Recent Enrollments -->
+                <div class="bg-white dark:bg-slate-800 rounded-xl border">
+                    <div class="p-6 border-b">
+                        <h2 class="text-xl font-bold">Recent Enrollments</h2>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <button class="relative p-2 hover:bg-slate-100 rounded-xl">
-                            <Bell class="w-5 h-5" />
+                    <div class="divide-y">
+                        <div v-for="enrollment in recentEnrollments?.slice(0, 5)" :key="enrollment.id" class="p-4">
+                            <p class="font-medium">{{ enrollment.user?.name }}</p>
+                            <p class="text-sm text-slate-500">{{ enrollment.course?.title }}</p>
+                            <p class="text-xs text-green-600 mt-1">+{{ formatCurrency(enrollment.amount_paid) }}</p>
+                        </div>
+                        <div v-if="!recentEnrollments?.length" class="p-8 text-center text-slate-500">
+                            No recent enrollments
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Reviews -->
+                <div class="bg-white dark:bg-slate-800 rounded-xl border">
+                    <div class="p-6 border-b">
+                        <h2 class="text-xl font-bold">Recent Reviews</h2>
+                    </div>
+                    <div class="divide-y">
+                        <div v-for="review in recentReviews?.slice(0, 5)" :key="review.id" class="p-4">
+                            <div class="flex text-yellow-400 text-sm mb-1">
+                                <span v-for="i in review.rating" :key="i">★</span>
+                                <span v-for="i in (5 - review.rating)" :key="i" class="text-slate-300">★</span>
+                            </div>
+                            <p class="text-sm">{{ review.review }}</p>
+                            <p class="text-xs text-slate-400 mt-1">{{ review.course?.title }}</p>
+                        </div>
+                        <div v-if="!recentReviews?.length" class="p-8 text-center text-slate-500">
+                            No reviews yet
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Course Modal -->
+        <div v-if="showCreateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-white">Create New Course</h2>
+                    <button @click="closeCreateModal" class="text-white hover:bg-white/20 p-1 rounded-lg">
+                        <X class="w-6 h-6" />
+                    </button>
+                </div>
+
+                <form @submit.prevent="submitCourse" class="p-6 space-y-6">
+                    <!-- Basic Information -->
+                    <div>
+                        <h3 class="text-lg font-bold mb-4 dark:text-white">Basic Information</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1 dark:text-white">Course Title *</label>
+                                <input v-model="form.title" type="text" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-900" required />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1 dark:text-white">Description *</label>
+                                <textarea v-model="form.description" rows="3" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-900" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pricing & Category -->
+                    <div class="border-t pt-6 dark:border-slate-700">
+                        <h3 class="text-lg font-bold mb-4 dark:text-white">Pricing & Category</h3>
+                        <div class="grid md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1 dark:text-white">Price (ETB)</label>
+                                <input v-model="form.price" type="number" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-900" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1 dark:text-white">Category</label>
+                                <select v-model="form.category_id" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-900">
+                                    <option value="">Select Category</option>
+                                    <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-1 dark:text-white">Difficulty Level</label>
+                                <select v-model="form.difficulty_level" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-900">
+                                    <option value="beginner">Beginner</option>
+                                    <option value="intermediate">Intermediate</option>
+                                    <option value="advanced">Advanced</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Learning Outcomes -->
+                    <div class="border-t pt-6 dark:border-slate-700">
+                        <h3 class="text-lg font-bold mb-4 dark:text-white">Learning Outcomes</h3>
+                        <div>
+                            <label class="block text-sm font-medium mb-1 dark:text-white">What Students Will Learn</label>
+                            <textarea v-model="form.what_you_will_learn" rows="2" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-900"></textarea>
+                        </div>
+                        <div class="mt-3">
+                            <label class="block text-sm font-medium mb-1 dark:text-white">Requirements</label>
+                            <textarea v-model="form.requirements" rows="2" class="w-full px-4 py-2 border rounded-lg dark:bg-slate-900"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Thumbnail -->
+                    <div class="border-t pt-6 dark:border-slate-700">
+                        <h3 class="text-lg font-bold mb-4 dark:text-white">Course Thumbnail</h3>
+                        <div class="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:border-blue-500" @click="$refs.imageInput.click()">
+                            <div v-if="imagePreview" class="mb-2">
+                                <img :src="imagePreview" class="h-32 mx-auto rounded-lg object-cover" />
+                            </div>
+                            <Upload v-else class="w-10 h-10 mx-auto text-slate-400 mb-2" />
+                            <p class="text-sm text-slate-500">Click to upload thumbnail</p>
+                        </div>
+                        <input type="file" ref="imageInput" @change="onImageChange" accept="image/*" class="hidden" />
+                    </div>
+
+                    <!-- Course Content -->
+                    <div class="border-t pt-6 dark:border-slate-700">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold dark:text-white">Course Content</h3>
+                            <button type="button" @click="addSection" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                                <Plus class="w-4 h-4 inline" /> Add Section
+                            </button>
+                        </div>
+
+                        <div v-if="sections.length === 0" class="text-center py-8 border-2 border-dashed rounded-xl">
+                            <Video class="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                            <p class="text-slate-500 text-sm">No sections yet</p>
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <div v-for="(section, sIndex) in sections" :key="section.id" class="border rounded-lg overflow-hidden">
+                                <div class="bg-slate-50 dark:bg-slate-700/30 p-3 flex justify-between">
+                                    <input v-model="section.title" class="flex-1 font-bold bg-transparent border-0" placeholder="Section Title" />
+                                    <button type="button" @click="removeSection(sIndex)" class="text-red-500 text-sm">Remove</button>
+                                </div>
+                                <div class="p-3 space-y-2">
+                                    <div v-for="(lesson, lIndex) in section.lessons" :key="lesson.id" class="border rounded-lg p-3">
+                                        <input v-model="lesson.title" class="w-full font-medium mb-2 border-0 bg-transparent" placeholder="Lesson Title" />
+                                        <div class="flex gap-2 mb-2">
+                                            <input type="file" accept="video/*" @change="(e) => onVideoSelect(sIndex, lIndex, e)" class="text-xs" />
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <label class="flex items-center gap-1 text-xs">
+                                                <input type="checkbox" v-model="lesson.is_free" /> Free
+                                            </label>
+                                            <input v-model="lesson.duration_minutes" type="number" placeholder="Minutes" class="w-20 px-2 py-1 border rounded text-sm" />
+                                            <button type="button" @click="removeLesson(sIndex, lIndex)" class="text-red-500 text-xs">Remove</button>
+                                        </div>
+                                    </div>
+                                    <button type="button" @click="addLesson(sIndex)" class="w-full py-2 text-sm border-2 border-dashed rounded-lg text-blue-600 hover:border-blue-600">
+                                        <Plus class="w-3 h-3 inline" /> Add Lesson
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pt-4 border-t">
+                        <button type="submit" :disabled="form.processing" class="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                            {{ form.processing ? 'Submitting...' : 'Submit for Review' }}
                         </button>
-                        <Link href="/instructor/courses/create" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm flex items-center gap-2 hover:bg-blue-700">
-                            <PlusCircle class="w-4 h-4" /> New Course
-                        </Link>
+                        <button type="button" @click="closeCreateModal" class="px-6 py-2 border rounded-lg hover:bg-slate-50">Cancel</button>
                     </div>
-                </div>
-            </header>
-
-            <div class="p-4 lg:p-8">
-                <!-- Dashboard View -->
-                <div v-if="activeTab === 'dashboard'">
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border">
-                            <p class="text-xs text-slate-500">Total Courses</p>
-                            <p class="text-2xl font-bold">{{ stats?.total_courses || 0 }}</p>
-                        </div>
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border">
-                            <p class="text-xs text-slate-500">Total Students</p>
-                            <p class="text-2xl font-bold">{{ stats?.total_students || 0 }}</p>
-                        </div>
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border">
-                            <p class="text-xs text-slate-500">Total Revenue</p>
-                            <p class="text-2xl font-bold text-green-600">{{ formatCurrency(stats?.total_revenue) }}</p>
-                        </div>
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border">
-                            <p class="text-xs text-slate-500">Average Rating</p>
-                            <p class="text-2xl font-bold text-yellow-500">{{ stats?.average_rating || 0 }} ★</p>
-                        </div>
-                        <div class="bg-white dark:bg-slate-900 rounded-xl p-4 border">
-                            <p class="text-xs text-slate-500">Pending Payout</p>
-                            <p class="text-2xl font-bold text-blue-600">{{ formatCurrency(stats?.pending_payout) }}</p>
-                        </div>
-                    </div>
-
-                    <!-- Monthly Earnings Chart -->
-                    <div class="bg-white dark:bg-slate-900 rounded-2xl border p-6 mb-8">
-                        <h2 class="text-xl font-bold mb-4">Monthly Earnings</h2>
-                        <div class="flex items-end gap-4 h-64">
-                            <div v-for="item in monthlyEarnings" :key="item.month" class="flex-1 flex flex-col items-center">
-                                <div class="w-full bg-blue-100 dark:bg-blue-900/30 rounded-t-lg transition-all" :style="{ height: (item.earnings / (monthlyEarnings[0]?.earnings || 1) * 200) + 'px' }"></div>
-                                <p class="text-xs text-slate-500 mt-2">{{ item.month }}</p>
-                                <p class="text-xs font-bold">{{ formatCurrency(item.earnings) }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid lg:grid-cols-2 gap-8">
-                        <!-- Recent Enrollments -->
-                        <div class="bg-white dark:bg-slate-900 rounded-2xl border">
-                            <div class="p-6 border-b">
-                                <h2 class="text-xl font-bold">Recent Enrollments</h2>
-                            </div>
-                            <div class="divide-y">
-                                <div v-for="enrollment in recentEnrollments?.slice(0,5)" :key="enrollment.id" class="p-4 flex justify-between items-center">
-                                    <div>
-                                        <p class="font-medium">{{ enrollment.user?.name }}</p>
-                                        <p class="text-sm text-slate-500">{{ enrollment.course?.title }}</p>
-                                    </div>
-                                    <span class="text-sm text-green-600">+{{ formatCurrency(enrollment.amount_paid) }}</span>
-                                </div>
-                                <div v-if="!recentEnrollments?.length" class="p-8 text-center text-slate-500">No recent enrollments</div>
-                            </div>
-                        </div>
-
-                        <!-- Recent Reviews -->
-                        <div class="bg-white dark:bg-slate-900 rounded-2xl border">
-                            <div class="p-6 border-b">
-                                <h2 class="text-xl font-bold">Recent Reviews</h2>
-                            </div>
-                            <div class="divide-y">
-                                <div v-for="review in recentReviews?.slice(0,5)" :key="review.id" class="p-4">
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <div class="flex text-yellow-400">
-                                            <span v-for="i in review.rating" :key="i">★</span>
-                                            <span v-for="i in (5 - review.rating)" :key="i" class="text-slate-300">★</span>
-                                        </div>
-                                        <span class="text-xs text-slate-500">{{ review.user?.name }}</span>
-                                    </div>
-                                    <p class="text-sm text-slate-600">{{ review.review }}</p>
-                                    <p class="text-xs text-slate-400 mt-1">{{ review.course?.title }}</p>
-                                </div>
-                                <div v-if="!recentReviews?.length" class="p-8 text-center text-slate-500">No reviews yet</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- My Courses View -->
-                <div v-if="activeTab === 'courses'">
-                    <div class="flex justify-between items-center mb-6">
-                        <h1 class="text-2xl font-bold">My Courses</h1>
-                        <Link href="/instructor/courses/create" class="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700">
-                            <PlusCircle class="w-4 h-4" /> Create Course
-                        </Link>
-                    </div>
-
-                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="course in courses" :key="course.id" class="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border hover:shadow-lg transition-all cursor-pointer" @click="goToCourse(course.id)">
-                            <img :src="course.image" class="w-full h-48 object-cover" />
-                            <div class="p-5">
-                                <div class="flex items-center justify-between mb-2">
-                                    <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">{{ course.status || 'Draft' }}</span>
-                                    <div class="flex items-center gap-1 text-yellow-400">
-                                        <Star class="w-4 h-4 fill-yellow-400" />
-                                        <span class="text-sm">{{ course.rating || 4.5 }}</span>
-                                    </div>
-                                </div>
-                                <h3 class="font-bold text-lg mb-2">{{ course.title }}</h3>
-                                <p class="text-sm text-slate-500 mb-3">{{ course.enrollments?.length || 0 }} students enrolled</p>
-                                <div class="flex items-center justify-between">
-                                    <span class="text-xl font-bold text-blue-600">{{ formatCurrency(course.price) }}</span>
-                                    <div class="flex gap-2">
-                                        <button class="p-2 text-slate-400 hover:text-blue-600"><Edit class="w-4 h-4" /></button>
-                                        <button class="p-2 text-slate-400 hover:text-green-600"><Eye class="w-4 h-4" /></button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Students View -->
-                <div v-if="activeTab === 'students'">
-                    <h1 class="text-2xl font-bold mb-6">My Students</h1>
-                    <div class="bg-white dark:bg-slate-900 rounded-2xl border overflow-hidden">
-                        <table class="w-full">
-                            <thead class="bg-slate-50 dark:bg-slate-800">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-sm font-medium">Student</th>
-                                    <th class="px-6 py-3 text-left text-sm font-medium">Course</th>
-                                    <th class="px-6 py-3 text-left text-sm font-medium">Progress</th>
-                                    <th class="px-6 py-3 text-left text-sm font-medium">Enrolled</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y">
-                                <tr v-for="student in recentEnrollments" :key="student.id">
-                                    <td class="px-6 py-4">{{ student.user?.name }}</td>
-                                    <td class="px-6 py-4">{{ student.course?.title }}</td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-2">
-                                            <div class="flex-1 h-2 bg-slate-200 rounded-full">
-                                                <div class="h-2 bg-blue-600 rounded-full" :style="{ width: (student.progress_percentage || 0) + '%' }"></div>
-                                            </div>
-                                            <span class="text-sm">{{ student.progress_percentage || 0 }}%</span>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4">{{ formatDate(student.enrolled_at) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Earnings View -->
-                <div v-if="activeTab === 'earnings'">
-                    <h1 class="text-2xl font-bold mb-6">Earnings Overview</h1>
-                    <div class="grid md:grid-cols-3 gap-6 mb-8">
-                        <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border text-center">
-                            <p class="text-sm text-slate-500">Total Revenue</p>
-                            <p class="text-3xl font-bold text-green-600">{{ formatCurrency(stats?.total_revenue) }}</p>
-                        </div>
-                        <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border text-center">
-                            <p class="text-sm text-slate-500">Platform Fee (30%)</p>
-                            <p class="text-3xl font-bold text-orange-600">{{ formatCurrency(stats?.total_revenue * 0.3) }}</p>
-                        </div>
-                        <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border text-center">
-                            <p class="text-sm text-slate-500">Your Earnings (70%)</p>
-                            <p class="text-3xl font-bold text-blue-600">{{ formatCurrency(stats?.total_revenue * 0.7) }}</p>
-                        </div>
-                    </div>
-                </div>
+                </form>
             </div>
-        </main>
-    </div>
+        </div>
+    </InstructorLayout>
 </template>
-
-<style scoped>
-.animate-spin {
-    animation: spin 1s linear infinite;
-}
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-</style>

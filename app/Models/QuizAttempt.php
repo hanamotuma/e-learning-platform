@@ -2,48 +2,29 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class QuizAttempt extends Model
 {
-    use HasFactory;
-
-   
-    protected $primaryKey = 'id'; 
-
     protected $fillable = [
-        'quiz_id',
-        'user_id',
-        'score',
-        'total_points', 
-        'answers',
-        'is_passed',
-        'started_at',
-        'completed_at',
+        'user_id', 'quiz_id', 'started_at', 'completed_at',
+        'score', 'total_points', 'is_passed', 'answers'
     ];
 
     protected $casts = [
-        'answers' => 'array',
-        'is_passed' => 'boolean',
-        'score' => 'integer', 
-        'total_points' => 'integer',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'answers' => 'array',
+        'is_passed' => 'boolean',
     ];
-
-    public function quiz()
-    {
-        return $this->belongsTo(Quiz::class);
-    }
 
     public function user()
     {
         return $this->belongsTo(User::class);
     }
-    public function answers() {
-    return $this->hasMany(AttemptAnswer::class, 'student_quiz_attempt_id');
-}
 
-
+    public function quiz()
+    {
+        return $this->belongsTo(Quiz::class);
+    }
 }

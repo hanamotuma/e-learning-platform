@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Head, useForm, router } from '@inertiajs/vue3'
-import { User, Mail, Phone, Camera, Trash2, Save, ArrowLeft, CheckCircle, AlertCircle, Award } from 'lucide-vue-next'
+import { User, Mail, Phone, Camera, AtSign, Trash2, Save, ArrowLeft, CheckCircle, AlertCircle, Award } from 'lucide-vue-next'
 
 const props = defineProps({
     user: Object
@@ -79,7 +79,7 @@ const submit = () => {
             isSaving.value = false
             setTimeout(() => {
                 showSuccess.value = false
-                router.get('/student/dashboard')
+                router.get(`/profile/${props.user.id}`)
             }, 1500)
         },
         onError: (errors) => {
@@ -99,7 +99,7 @@ const submit = () => {
 }
 
 const goBack = () => {
-    router.get('/student/dashboard')
+    router.get(`/profile/${props.user.id}`)
 }
 
 const userInitials = computed(() => {

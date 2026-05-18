@@ -21,6 +21,10 @@ return new class extends Migration
             $table->integer('total_hours_learned')->default(0);
             $table->integer('certificates_earned')->default(0);
             $table->timestamp('last_activity_at')->nullable();
+            $table->string('role');
+            $table->string('phone')->nullable()->after('full_name');
+            $table->string('bio')->nullable()->after('phone');
+            $table->string('instructor_profiles');
             $table->rememberToken();
             $table->timestamps();
         });
@@ -44,5 +48,10 @@ return new class extends Migration
     {
         Schema::dropIfExists('course_user');
         Schema::dropIfExists('users');
+        Schema::table('users', function (Blueprint $table) {
+        $table->dropColumn('role');
+        $table->dropColumn('phone', 'bio');
+        
+    });
     }
 };

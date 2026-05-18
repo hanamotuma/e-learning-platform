@@ -6,13 +6,53 @@ use App\Models\User;
 use App\Models\Enrollment;
 use App\Models\Certificate;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
 
 class ProfileController extends Controller
 {
-    // Edit profile page (for updating profile)
+    // Public profile view
+    public function publicProfile($id)
+    {
+        $user = User::findOrFail($id);
+        
+        $enrolledCourses = Enrollment::with(['course.instructor'])
+            ->where('user_id', $id)
+            ->where('status', 'active')
+            ->get();
+        
+        $certificates = Certificate::with('course')
+            ->where('user_id', $id)
+            ->get();
+        
+        return Inertia::render('Profile/Public', [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->full_name ?? $user->name,
+                'username' => $user->username,
+                'email' => $user->email,
+                'phone' => $user->phone,
+                'bio' => $user->bio,
+                'interests' => $user->interests,
+                'education' => $user->education,
+                'profile_picture_url' => $user->profile_picture_url,
+                'created_at' => $user->created_at,
+            ],
+            'stats' => [
+                'total_courses' => $enrolledCourses->count(),
+                'completed_courses' => $enrolledCourses->filter(function($e) {
+                    return $e->progress_percentage >= 100;
+                })->count(),
+                'certificates' => $certificates->count(),
+                'average_progress' => $enrolledCourses->count() > 0 ? round($enrolledCourses->avg('progress_percentage')) : 0,
+            ],
+            'enrolledCourses' => $enrolledCourses,
+            'certificates' => $certificates,
+        ]);
+    }
+    
+    // Edit profile form
     public function edit()
     {
         $user = Auth::user();
@@ -23,15 +63,15 @@ class ProfileController extends Controller
                 'name' => $user->full_name ?? $user->name,
                 'username' => $user->username,
                 'email' => $user->email,
-                'phone' => $user->phone ?? '',
-                'bio' => $user->bio ?? '',
-                'interests' => $user->interests ?? '',
-                'education' => $user->education ?? '',
+                'phone' => $user->phone,
+                'bio' => $user->bio,
+                'interests' => $user->interests,
+                'education' => $user->education,
                 'profile_picture_url' => $user->profile_picture_url,
             ]
         ]);
     }
-
+    
     // Update profile
     public function update(Request $request)
     {
@@ -39,16 +79,15 @@ class ProfileController extends Controller
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users,username,' . $user->id . ',user_id',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id . ',user_id',
+            'username' => 'required|string|max:255|unique:users,username,' . $user->id,
+            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
             'bio' => 'nullable|string|max:1000',
             'interests' => 'nullable|string|max:255',
             'education' => 'nullable|string|max:255',
-            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+            'profile_picture' => 'nullable|image|max:5120',
         ]);
         
-        // Update user data
         $user->full_name = $validated['name'];
         $user->username = $validated['username'];
         $user->email = $validated['email'];
@@ -68,39 +107,6 @@ class ProfileController extends Controller
         
         $user->save();
         
-        return redirect()->back()->with('success', 'Profile updated successfully!');
-    }
-
-    // Public profile page (view only)
-    public function publicProfile($id)
-    {
-        $user = User::findOrFail($id);
-        
-        $enrolledCourses = Enrollment::with(['course.instructor'])
-            ->where('user_id', $id)
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        $certificates = Certificate::with(['course'])
-            ->where('user_id', $id)
-            ->orderBy('created_at', 'desc')
-            ->get();
-        
-        return Inertia::render('Profile/Public', [
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->full_name ?? $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'bio' => $user->bio,
-                'interests' => $user->interests,
-                'education' => $user->education,
-                'created_at' => $user->created_at,
-                'profile_picture_url' => $user->profile_picture_url,
-            ],
-            'enrolledCourses' => $enrolledCourses,
-            'certificates' => $certificates,
-        ]);
+        return redirect()->route('profile.public', $user->id)->with('success', 'Profile updated successfully!');
     }
 }

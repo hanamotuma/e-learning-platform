@@ -1,132 +1,110 @@
 <script setup>
+import { ref } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
-import { PlusCircle, Edit, Eye, Trash2, BookOpen } from 'lucide-vue-next'
+import InstructorLayout from '@/layouts/InstructorLayout.vue'
+import { PlusCircle, Edit, Eye, Trash2, BookOpen, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-vue-next'
 
 const props = defineProps({
-    courses: {
-        type: Object,
-        default: () => ({ data: [] })
-    }
+    courses: Object,
+    stats: Object
 })
 
-const deleteCourse = (id, title) => {
-    if (confirm(`Delete "${title}"? This action cannot be undone.`)) {
-        router.delete(route('instructor.courses.destroy', { course: id }))
-    }
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US').format(amount || 0) + ' ETB'
 }
 
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-    }).format(amount || 0)
+const getStatusBadge = (course) => {
+    if (course.approval_status === 'pending') {
+        return { text: 'Pending Review', color: 'bg-yellow-100 text-yellow-700', icon: Clock }
+    } else if (course.approval_status === 'approved') {
+        return { text: 'Approved', color: 'bg-green-100 text-green-700', icon: CheckCircle }
+    } else if (course.approval_status === 'rejected') {
+        return { text: 'Rejected', color: 'bg-red-100 text-red-700', icon: XCircle }
+    }
+    return { text: 'Draft', color: 'bg-gray-100 text-gray-700', icon: AlertCircle }
 }
 </script>
 
 <template>
-    <Head title="My Courses | Instructor Portal" />
+    <Head title="My Courses | Instructor" />
     
-    <div class="min-h-screen bg-slate-50 dark:bg-slate-950">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            
-            <!-- Header -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <InstructorLayout>
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h1 class="text-3xl font-black dark:text-white">My Courses</h1>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        Manage and organize your courses
-                    </p>
+                    <h1 class="text-3xl font-bold dark:text-white">My Courses</h1>
+                    <p class="text-slate-500 dark:text-slate-400 mt-1">Manage and track your course approval status</p>
                 </div>
-                <Link 
-                    :href="route('instructor.courses.create')" 
-                    class="inline-flex items-center space-x-2 px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
-                >
+                <Link href="/instructor/courses/create" class="px-5 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2">
                     <PlusCircle class="w-4 h-4" />
-                    <span>Create New Course</span>
+                    Create New Course
                 </Link>
             </div>
-            
-            <!-- Courses Grid -->
-            <div v-if="courses.data.length === 0" class="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <BookOpen class="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                <h3 class="text-xl font-bold dark:text-white mb-2">No courses yet</h3>
-                <p class="text-slate-500 mb-6">Start creating your first course and share your knowledge</p>
-                <Link :href="route('instructor.courses.create')" class="px-6 py-3 bg-blue-600 text-white rounded-xl">
-                    Create Your First Course
-                </Link>
-            </div>
-            
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="course in courses.data" :key="course.id" 
-                    class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden hover:shadow-xl transition-all group">
-                    
-                    <!-- Thumbnail -->
-                    <div class="relative h-48 overflow-hidden">
-                        <img 
-                            :src="course.thumbnail || 'https://placehold.co/600x400?text=No+Thumbnail'" 
-                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                        <span :class="[
-                            'absolute top-3 right-3 px-2 py-1 text-xs font-bold rounded-lg',
-                            course.status === 'published' ? 'bg-emerald-500 text-white' :
-                            course.status === 'draft' ? 'bg-yellow-500 text-white' :
-                            'bg-slate-500 text-white'
-                        ]">
-                            {{ course.status }}
-                        </span>
-                    </div>
-                    
-                    <!-- Content -->
-                    <div class="p-5">
-                        <h3 class="font-bold text-lg dark:text-white mb-1 line-clamp-1">{{ course.title }}</h3>
-                        <p class="text-xs text-slate-500 mb-2">{{ course.category?.name || 'Uncategorized' }}</p>
-                        <p class="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-3">
-                            {{ course.description || 'No description' }}
-                        </p>
-                        
-                        <div class="flex items-center justify-between mb-4">
-                            <span class="text-2xl font-black text-blue-600">{{ formatCurrency(course.price) }}</span>
-                            <span class="text-xs text-slate-500">{{ course.enrollments_count || 0 }} students</span>
-                        </div>
-                        
-                        <!-- Actions -->
-                        <div class="flex items-center space-x-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                            <Link 
-                                :href="route('instructor.courses.edit', { course: course.id })"
-                                class="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
-                            >
-                                <Edit class="w-4 h-4" />
-                                <span class="text-sm font-medium">Edit</span>
-                            </Link>
-                            <button 
-                                @click="deleteCourse(course.id, course.title)"
-                                class="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
-                            >
-                                <Trash2 class="w-4 h-4" />
-                                <span class="text-sm font-medium">Delete</span>
-                            </button>
-                        </div>
-                    </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border">
+                    <p class="text-xs text-slate-500">Total Courses</p>
+                    <p class="text-2xl font-bold">{{ stats?.total_courses || 0 }}</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border">
+                    <p class="text-xs text-slate-500">Pending Approval</p>
+                    <p class="text-2xl font-bold text-yellow-600">{{ stats?.pending || 0 }}</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border">
+                    <p class="text-xs text-slate-500">Approved</p>
+                    <p class="text-2xl font-bold text-green-600">{{ stats?.approved || 0 }}</p>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border">
+                    <p class="text-xs text-slate-500">Rejected</p>
+                    <p class="text-2xl font-bold text-red-600">{{ stats?.rejected || 0 }}</p>
                 </div>
             </div>
-            
-            <!-- Pagination -->
-            <div v-if="courses.links && courses.links.length > 3" class="mt-8 flex justify-center">
-                <div class="flex space-x-2">
-                    <Link 
-                        v-for="link in courses.links" 
-                        :key="link.label"
-                        :href="link.url || '#'"
-                        :class="[
-                            'px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                            link.active 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700'
-                        ]"
-                        v-html="link.label"
-                    />
+
+            <!-- Courses Grid -->
+            <div v-if="courses?.data?.length === 0" class="bg-white dark:bg-slate-800 rounded-xl p-12 text-center border">
+                <BookOpen class="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <p class="text-slate-500 mb-2">No courses created yet</p>
+                <Link href="/instructor/courses/create" class="px-5 py-2 bg-orange-600 text-white rounded-lg">Create Your First Course</Link>
+            </div>
+
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="course in courses?.data" :key="course.id" class="bg-white dark:bg-slate-800 rounded-xl border overflow-hidden hover:shadow-lg transition-all">
+                    <img :src="course.image || '/default-course.jpg'" class="w-full h-48 object-cover" />
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span :class="['px-2 py-1 text-xs rounded-full flex items-center gap-1', getStatusBadge(course).color]">
+                                <component :is="getStatusBadge(course).icon" class="w-3 h-3" />
+                                {{ getStatusBadge(course).text }}
+                            </span>
+                            <div class="flex items-center gap-1 text-yellow-400">
+                                <Star class="w-4 h-4 fill-yellow-400" />
+                                <span class="text-sm">{{ course.rating || 0 }}</span>
+                            </div>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2">{{ course.title }}</h3>
+                        <p class="text-sm text-slate-500 mb-3">{{ course.enrollments?.length || 0 }} students</p>
+                        
+                        <!-- Show rejection reason if rejected -->
+                        <div v-if="course.approval_status === 'rejected' && course.rejection_reason" class="mb-3 p-2 bg-red-50 rounded-lg">
+                            <p class="text-xs text-red-600 font-medium">Rejection Reason:</p>
+                            <p class="text-xs text-red-500">{{ course.rejection_reason }}</p>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-xl font-bold text-orange-600">{{ formatCurrency(course.price) }}</span>
+                            <div class="flex gap-2">
+                                <Link :href="`/instructor/courses/${course.id}/edit`" class="p-2 text-slate-400 hover:text-blue-600 rounded-lg">
+                                    <Edit class="w-4 h-4" />
+                                </Link>
+                                <button v-if="course.approval_status === 'rejected'" @click="editAgain(course.id)" class="p-2 text-orange-600 hover:bg-orange-50 rounded-lg">
+                                    <Edit class="w-4 h-4" /> Resubmit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </InstructorLayout>
 </template>
